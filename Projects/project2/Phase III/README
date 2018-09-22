@@ -1,0 +1,14 @@
+CMSC 421-02 (Fall 2017) Project 2
+Author: Stephanie Tam (ru14618@umbc.edu)
+
+
+Approach:
+For the project, I followed the project description and the approach. The implementation of Phase 1 was relatively easy since it was just figuring out the algorithm to calculate the level and offset.
+
+As for Phases 2 and 3, I mostly understood the concepts of splitting and coalescing. For some reason, I couldn't fix the errors that I was getting when I ran my own tests. Some of the errors were: incorrectly marking the bitmap as used, ZONES nr >= nzones, buffer I/O error upon unmounting, to name a few. I tried my best to fix the errors; however, I couldn't, even though my logic would align with that of others who had theirs working correctly. Because of such, I essentially surrendered and accepted that I most likely couldn't get it completely working.
+
+
+Resources:
+1. https://elixir.free-electrons.com/linux/v3.0/source/include/asm-generic/bitops/le.h
+2. http://time.to.pullthepl.ug/annotated-xiafs/xiafs/module/bitmap.c.html
+3. http://opensourceforu.com/2011/01/understanding-a-kernel-oops/

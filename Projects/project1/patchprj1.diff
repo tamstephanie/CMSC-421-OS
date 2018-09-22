@@ -1,0 +1,5215 @@
+diff -rcP -X ignorelist.txt linux-3.12.9/arch/x86/syscalls/syscall_32.tbl project1/arch/x86/syscalls/syscall_32.tbl
+*** linux-3.12.9/arch/x86/syscalls/syscall_32.tbl	2014-01-25 12:18:00.000000000 -0500
+--- project1/arch/x86/syscalls/syscall_32.tbl	2017-11-05 09:39:31.724085680 -0500
+***************
+*** 357,359 ****
+--- 357,364 ----
+  348	i386	process_vm_writev	sys_process_vm_writev		compat_sys_process_vm_writev
+  349	i386	kcmp			sys_kcmp
+  350	i386	finit_module		sys_finit_module
++ 351	i386	enqueue421		sys_enqueue421
++ 352	i386	dequeue421		sys_dequeue421
++ 353	i386	peekLen421		sys_peekLen421
++ 354	i386	queueLen421		sys_queueLen421
++ 355	i386	clearQueue421		sys_clearQueue421
+\ No newline at end of file
+diff -rcP -X ignorelist.txt linux-3.12.9/driver/Makefile project1/driver/Makefile
+*** linux-3.12.9/driver/Makefile	1969-12-31 19:00:00.000000000 -0500
+--- project1/driver/Makefile	2017-11-07 23:01:11.465471306 -0500
+***************
+*** 0 ****
+--- 1,11 ----
++ CFLAGS= -g -Wall -ansi
++ 
++ test: test.o
++ 	gcc ${CFLAGS} test.c -o test
++ 
++ test_fifo: test_fifo.o
++ 	gcc ${CFLAGS} test_fifo.c -o test_fifo
++ 
++ clean:
++ 	rm -f *~
++ 	rm -f *.o*
+diff -rcP -X ignorelist.txt linux-3.12.9/driver/src/arch/x86/syscalls/syscall_32.tbl project1/driver/src/arch/x86/syscalls/syscall_32.tbl
+*** linux-3.12.9/driver/src/arch/x86/syscalls/syscall_32.tbl	1969-12-31 19:00:00.000000000 -0500
+--- project1/driver/src/arch/x86/syscalls/syscall_32.tbl	2017-11-07 14:40:16.601722184 -0500
+***************
+*** 0 ****
+--- 1,364 ----
++ #
++ # 32-bit system call numbers and entry vectors
++ #
++ # The format is:
++ # <number> <abi> <name> <entry point> <compat entry point>
++ #
++ # The abi is always "i386" for this file.
++ #
++ 0	i386	restart_syscall		sys_restart_syscall
++ 1	i386	exit			sys_exit
++ 2	i386	fork			sys_fork			stub32_fork
++ 3	i386	read			sys_read
++ 4	i386	write			sys_write
++ 5	i386	open			sys_open			compat_sys_open
++ 6	i386	close			sys_close
++ 7	i386	waitpid			sys_waitpid			sys32_waitpid
++ 8	i386	creat			sys_creat
++ 9	i386	link			sys_link
++ 10	i386	unlink			sys_unlink
++ 11	i386	execve			sys_execve			stub32_execve
++ 12	i386	chdir			sys_chdir
++ 13	i386	time			sys_time			compat_sys_time
++ 14	i386	mknod			sys_mknod
++ 15	i386	chmod			sys_chmod
++ 16	i386	lchown			sys_lchown16
++ 17	i386	break
++ 18	i386	oldstat			sys_stat
++ 19	i386	lseek			sys_lseek			compat_sys_lseek
++ 20	i386	getpid			sys_getpid
++ 21	i386	mount			sys_mount			compat_sys_mount
++ 22	i386	umount			sys_oldumount
++ 23	i386	setuid			sys_setuid16
++ 24	i386	getuid			sys_getuid16
++ 25	i386	stime			sys_stime			compat_sys_stime
++ 26	i386	ptrace			sys_ptrace			compat_sys_ptrace
++ 27	i386	alarm			sys_alarm
++ 28	i386	oldfstat		sys_fstat
++ 29	i386	pause			sys_pause
++ 30	i386	utime			sys_utime			compat_sys_utime
++ 31	i386	stty
++ 32	i386	gtty
++ 33	i386	access			sys_access
++ 34	i386	nice			sys_nice
++ 35	i386	ftime
++ 36	i386	sync			sys_sync
++ 37	i386	kill			sys_kill
++ 38	i386	rename			sys_rename
++ 39	i386	mkdir			sys_mkdir
++ 40	i386	rmdir			sys_rmdir
++ 41	i386	dup			sys_dup
++ 42	i386	pipe			sys_pipe
++ 43	i386	times			sys_times			compat_sys_times
++ 44	i386	prof
++ 45	i386	brk			sys_brk
++ 46	i386	setgid			sys_setgid16
++ 47	i386	getgid			sys_getgid16
++ 48	i386	signal			sys_signal
++ 49	i386	geteuid			sys_geteuid16
++ 50	i386	getegid			sys_getegid16
++ 51	i386	acct			sys_acct
++ 52	i386	umount2			sys_umount
++ 53	i386	lock
++ 54	i386	ioctl			sys_ioctl			compat_sys_ioctl
++ 55	i386	fcntl			sys_fcntl			compat_sys_fcntl64
++ 56	i386	mpx
++ 57	i386	setpgid			sys_setpgid
++ 58	i386	ulimit
++ 59	i386	oldolduname		sys_olduname
++ 60	i386	umask			sys_umask
++ 61	i386	chroot			sys_chroot
++ 62	i386	ustat			sys_ustat			compat_sys_ustat
++ 63	i386	dup2			sys_dup2
++ 64	i386	getppid			sys_getppid
++ 65	i386	getpgrp			sys_getpgrp
++ 66	i386	setsid			sys_setsid
++ 67	i386	sigaction		sys_sigaction			compat_sys_sigaction
++ 68	i386	sgetmask		sys_sgetmask
++ 69	i386	ssetmask		sys_ssetmask
++ 70	i386	setreuid		sys_setreuid16
++ 71	i386	setregid		sys_setregid16
++ 72	i386	sigsuspend		sys_sigsuspend			sys_sigsuspend
++ 73	i386	sigpending		sys_sigpending			compat_sys_sigpending
++ 74	i386	sethostname		sys_sethostname
++ 75	i386	setrlimit		sys_setrlimit			compat_sys_setrlimit
++ 76	i386	getrlimit		sys_old_getrlimit		compat_sys_old_getrlimit
++ 77	i386	getrusage		sys_getrusage			compat_sys_getrusage
++ 78	i386	gettimeofday		sys_gettimeofday		compat_sys_gettimeofday
++ 79	i386	settimeofday		sys_settimeofday		compat_sys_settimeofday
++ 80	i386	getgroups		sys_getgroups16
++ 81	i386	setgroups		sys_setgroups16
++ 82	i386	select			sys_old_select			compat_sys_old_select
++ 83	i386	symlink			sys_symlink
++ 84	i386	oldlstat		sys_lstat
++ 85	i386	readlink		sys_readlink
++ 86	i386	uselib			sys_uselib
++ 87	i386	swapon			sys_swapon
++ 88	i386	reboot			sys_reboot
++ 89	i386	readdir			sys_old_readdir			compat_sys_old_readdir
++ 90	i386	mmap			sys_old_mmap			sys32_mmap
++ 91	i386	munmap			sys_munmap
++ 92	i386	truncate		sys_truncate			compat_sys_truncate
++ 93	i386	ftruncate		sys_ftruncate			compat_sys_ftruncate
++ 94	i386	fchmod			sys_fchmod
++ 95	i386	fchown			sys_fchown16
++ 96	i386	getpriority		sys_getpriority
++ 97	i386	setpriority		sys_setpriority
++ 98	i386	profil
++ 99	i386	statfs			sys_statfs			compat_sys_statfs
++ 100	i386	fstatfs			sys_fstatfs			compat_sys_fstatfs
++ 101	i386	ioperm			sys_ioperm
++ 102	i386	socketcall		sys_socketcall			compat_sys_socketcall
++ 103	i386	syslog			sys_syslog
++ 104	i386	setitimer		sys_setitimer			compat_sys_setitimer
++ 105	i386	getitimer		sys_getitimer			compat_sys_getitimer
++ 106	i386	stat			sys_newstat			compat_sys_newstat
++ 107	i386	lstat			sys_newlstat			compat_sys_newlstat
++ 108	i386	fstat			sys_newfstat			compat_sys_newfstat
++ 109	i386	olduname		sys_uname
++ 110	i386	iopl			sys_iopl
++ 111	i386	vhangup			sys_vhangup
++ 112	i386	idle
++ 113	i386	vm86old			sys_vm86old			sys32_vm86_warning
++ 114	i386	wait4			sys_wait4			compat_sys_wait4
++ 115	i386	swapoff			sys_swapoff
++ 116	i386	sysinfo			sys_sysinfo			compat_sys_sysinfo
++ 117	i386	ipc			sys_ipc				compat_sys_ipc
++ 118	i386	fsync			sys_fsync
++ 119	i386	sigreturn		sys_sigreturn			stub32_sigreturn
++ 120	i386	clone			sys_clone			stub32_clone
++ 121	i386	setdomainname		sys_setdomainname
++ 122	i386	uname			sys_newuname
++ 123	i386	modify_ldt		sys_modify_ldt
++ 124	i386	adjtimex		sys_adjtimex			compat_sys_adjtimex
++ 125	i386	mprotect		sys_mprotect
++ 126	i386	sigprocmask		sys_sigprocmask			compat_sys_sigprocmask
++ 127	i386	create_module
++ 128	i386	init_module		sys_init_module
++ 129	i386	delete_module		sys_delete_module
++ 130	i386	get_kernel_syms
++ 131	i386	quotactl		sys_quotactl			sys32_quotactl
++ 132	i386	getpgid			sys_getpgid
++ 133	i386	fchdir			sys_fchdir
++ 134	i386	bdflush			sys_bdflush
++ 135	i386	sysfs			sys_sysfs
++ 136	i386	personality		sys_personality
++ 137	i386	afs_syscall
++ 138	i386	setfsuid		sys_setfsuid16
++ 139	i386	setfsgid		sys_setfsgid16
++ 140	i386	_llseek			sys_llseek
++ 141	i386	getdents		sys_getdents			compat_sys_getdents
++ 142	i386	_newselect		sys_select			compat_sys_select
++ 143	i386	flock			sys_flock
++ 144	i386	msync			sys_msync
++ 145	i386	readv			sys_readv			compat_sys_readv
++ 146	i386	writev			sys_writev			compat_sys_writev
++ 147	i386	getsid			sys_getsid
++ 148	i386	fdatasync		sys_fdatasync
++ 149	i386	_sysctl			sys_sysctl			compat_sys_sysctl
++ 150	i386	mlock			sys_mlock
++ 151	i386	munlock			sys_munlock
++ 152	i386	mlockall		sys_mlockall
++ 153	i386	munlockall		sys_munlockall
++ 154	i386	sched_setparam		sys_sched_setparam
++ 155	i386	sched_getparam		sys_sched_getparam
++ 156	i386	sched_setscheduler	sys_sched_setscheduler
++ 157	i386	sched_getscheduler	sys_sched_getscheduler
++ 158	i386	sched_yield		sys_sched_yield
++ 159	i386	sched_get_priority_max	sys_sched_get_priority_max
++ 160	i386	sched_get_priority_min	sys_sched_get_priority_min
++ 161	i386	sched_rr_get_interval	sys_sched_rr_get_interval	compat_sys_sched_rr_get_interval
++ 162	i386	nanosleep		sys_nanosleep			compat_sys_nanosleep
++ 163	i386	mremap			sys_mremap
++ 164	i386	setresuid		sys_setresuid16
++ 165	i386	getresuid		sys_getresuid16
++ 166	i386	vm86			sys_vm86			sys32_vm86_warning
++ 167	i386	query_module
++ 168	i386	poll			sys_poll
++ 169	i386	nfsservctl
++ 170	i386	setresgid		sys_setresgid16
++ 171	i386	getresgid		sys_getresgid16
++ 172	i386	prctl			sys_prctl
++ 173	i386	rt_sigreturn		sys_rt_sigreturn		stub32_rt_sigreturn
++ 174	i386	rt_sigaction		sys_rt_sigaction		compat_sys_rt_sigaction
++ 175	i386	rt_sigprocmask		sys_rt_sigprocmask
++ 176	i386	rt_sigpending		sys_rt_sigpending		compat_sys_rt_sigpending
++ 177	i386	rt_sigtimedwait		sys_rt_sigtimedwait		compat_sys_rt_sigtimedwait
++ 178	i386	rt_sigqueueinfo		sys_rt_sigqueueinfo		compat_sys_rt_sigqueueinfo
++ 179	i386	rt_sigsuspend		sys_rt_sigsuspend
++ 180	i386	pread64			sys_pread64			sys32_pread
++ 181	i386	pwrite64		sys_pwrite64			sys32_pwrite
++ 182	i386	chown			sys_chown16
++ 183	i386	getcwd			sys_getcwd
++ 184	i386	capget			sys_capget
++ 185	i386	capset			sys_capset
++ 186	i386	sigaltstack		sys_sigaltstack			compat_sys_sigaltstack
++ 187	i386	sendfile		sys_sendfile			compat_sys_sendfile
++ 188	i386	getpmsg
++ 189	i386	putpmsg
++ 190	i386	vfork			sys_vfork			stub32_vfork
++ 191	i386	ugetrlimit		sys_getrlimit			compat_sys_getrlimit
++ 192	i386	mmap2			sys_mmap_pgoff
++ 193	i386	truncate64		sys_truncate64			sys32_truncate64
++ 194	i386	ftruncate64		sys_ftruncate64			sys32_ftruncate64
++ 195	i386	stat64			sys_stat64			sys32_stat64
++ 196	i386	lstat64			sys_lstat64			sys32_lstat64
++ 197	i386	fstat64			sys_fstat64			sys32_fstat64
++ 198	i386	lchown32		sys_lchown
++ 199	i386	getuid32		sys_getuid
++ 200	i386	getgid32		sys_getgid
++ 201	i386	geteuid32		sys_geteuid
++ 202	i386	getegid32		sys_getegid
++ 203	i386	setreuid32		sys_setreuid
++ 204	i386	setregid32		sys_setregid
++ 205	i386	getgroups32		sys_getgroups
++ 206	i386	setgroups32		sys_setgroups
++ 207	i386	fchown32		sys_fchown
++ 208	i386	setresuid32		sys_setresuid
++ 209	i386	getresuid32		sys_getresuid
++ 210	i386	setresgid32		sys_setresgid
++ 211	i386	getresgid32		sys_getresgid
++ 212	i386	chown32			sys_chown
++ 213	i386	setuid32		sys_setuid
++ 214	i386	setgid32		sys_setgid
++ 215	i386	setfsuid32		sys_setfsuid
++ 216	i386	setfsgid32		sys_setfsgid
++ 217	i386	pivot_root		sys_pivot_root
++ 218	i386	mincore			sys_mincore
++ 219	i386	madvise			sys_madvise
++ 220	i386	getdents64		sys_getdents64			compat_sys_getdents64
++ 221	i386	fcntl64			sys_fcntl64			compat_sys_fcntl64
++ # 222 is unused
++ # 223 is unused
++ 224	i386	gettid			sys_gettid
++ 225	i386	readahead		sys_readahead			sys32_readahead
++ 226	i386	setxattr		sys_setxattr
++ 227	i386	lsetxattr		sys_lsetxattr
++ 228	i386	fsetxattr		sys_fsetxattr
++ 229	i386	getxattr		sys_getxattr
++ 230	i386	lgetxattr		sys_lgetxattr
++ 231	i386	fgetxattr		sys_fgetxattr
++ 232	i386	listxattr		sys_listxattr
++ 233	i386	llistxattr		sys_llistxattr
++ 234	i386	flistxattr		sys_flistxattr
++ 235	i386	removexattr		sys_removexattr
++ 236	i386	lremovexattr		sys_lremovexattr
++ 237	i386	fremovexattr		sys_fremovexattr
++ 238	i386	tkill			sys_tkill
++ 239	i386	sendfile64		sys_sendfile64
++ 240	i386	futex			sys_futex			compat_sys_futex
++ 241	i386	sched_setaffinity	sys_sched_setaffinity		compat_sys_sched_setaffinity
++ 242	i386	sched_getaffinity	sys_sched_getaffinity		compat_sys_sched_getaffinity
++ 243	i386	set_thread_area		sys_set_thread_area
++ 244	i386	get_thread_area		sys_get_thread_area
++ 245	i386	io_setup		sys_io_setup			compat_sys_io_setup
++ 246	i386	io_destroy		sys_io_destroy
++ 247	i386	io_getevents		sys_io_getevents		compat_sys_io_getevents
++ 248	i386	io_submit		sys_io_submit			compat_sys_io_submit
++ 249	i386	io_cancel		sys_io_cancel
++ 250	i386	fadvise64		sys_fadvise64			sys32_fadvise64
++ # 251 is available for reuse (was briefly sys_set_zone_reclaim)
++ 252	i386	exit_group		sys_exit_group
++ 253	i386	lookup_dcookie		sys_lookup_dcookie		compat_sys_lookup_dcookie
++ 254	i386	epoll_create		sys_epoll_create
++ 255	i386	epoll_ctl		sys_epoll_ctl
++ 256	i386	epoll_wait		sys_epoll_wait
++ 257	i386	remap_file_pages	sys_remap_file_pages
++ 258	i386	set_tid_address		sys_set_tid_address
++ 259	i386	timer_create		sys_timer_create		compat_sys_timer_create
++ 260	i386	timer_settime		sys_timer_settime		compat_sys_timer_settime
++ 261	i386	timer_gettime		sys_timer_gettime		compat_sys_timer_gettime
++ 262	i386	timer_getoverrun	sys_timer_getoverrun
++ 263	i386	timer_delete		sys_timer_delete
++ 264	i386	clock_settime		sys_clock_settime		compat_sys_clock_settime
++ 265	i386	clock_gettime		sys_clock_gettime		compat_sys_clock_gettime
++ 266	i386	clock_getres		sys_clock_getres		compat_sys_clock_getres
++ 267	i386	clock_nanosleep		sys_clock_nanosleep		compat_sys_clock_nanosleep
++ 268	i386	statfs64		sys_statfs64			compat_sys_statfs64
++ 269	i386	fstatfs64		sys_fstatfs64			compat_sys_fstatfs64
++ 270	i386	tgkill			sys_tgkill
++ 271	i386	utimes			sys_utimes			compat_sys_utimes
++ 272	i386	fadvise64_64		sys_fadvise64_64		sys32_fadvise64_64
++ 273	i386	vserver
++ 274	i386	mbind			sys_mbind
++ 275	i386	get_mempolicy		sys_get_mempolicy		compat_sys_get_mempolicy
++ 276	i386	set_mempolicy		sys_set_mempolicy
++ 277	i386	mq_open			sys_mq_open			compat_sys_mq_open
++ 278	i386	mq_unlink		sys_mq_unlink
++ 279	i386	mq_timedsend		sys_mq_timedsend		compat_sys_mq_timedsend
++ 280	i386	mq_timedreceive		sys_mq_timedreceive		compat_sys_mq_timedreceive
++ 281	i386	mq_notify		sys_mq_notify			compat_sys_mq_notify
++ 282	i386	mq_getsetattr		sys_mq_getsetattr		compat_sys_mq_getsetattr
++ 283	i386	kexec_load		sys_kexec_load			compat_sys_kexec_load
++ 284	i386	waitid			sys_waitid			compat_sys_waitid
++ # 285 sys_setaltroot
++ 286	i386	add_key			sys_add_key
++ 287	i386	request_key		sys_request_key
++ 288	i386	keyctl			sys_keyctl
++ 289	i386	ioprio_set		sys_ioprio_set
++ 290	i386	ioprio_get		sys_ioprio_get
++ 291	i386	inotify_init		sys_inotify_init
++ 292	i386	inotify_add_watch	sys_inotify_add_watch
++ 293	i386	inotify_rm_watch	sys_inotify_rm_watch
++ 294	i386	migrate_pages		sys_migrate_pages
++ 295	i386	openat			sys_openat			compat_sys_openat
++ 296	i386	mkdirat			sys_mkdirat
++ 297	i386	mknodat			sys_mknodat
++ 298	i386	fchownat		sys_fchownat
++ 299	i386	futimesat		sys_futimesat			compat_sys_futimesat
++ 300	i386	fstatat64		sys_fstatat64			sys32_fstatat
++ 301	i386	unlinkat		sys_unlinkat
++ 302	i386	renameat		sys_renameat
++ 303	i386	linkat			sys_linkat
++ 304	i386	symlinkat		sys_symlinkat
++ 305	i386	readlinkat		sys_readlinkat
++ 306	i386	fchmodat		sys_fchmodat
++ 307	i386	faccessat		sys_faccessat
++ 308	i386	pselect6		sys_pselect6			compat_sys_pselect6
++ 309	i386	ppoll			sys_ppoll			compat_sys_ppoll
++ 310	i386	unshare			sys_unshare
++ 311	i386	set_robust_list		sys_set_robust_list		compat_sys_set_robust_list
++ 312	i386	get_robust_list		sys_get_robust_list		compat_sys_get_robust_list
++ 313	i386	splice			sys_splice
++ 314	i386	sync_file_range		sys_sync_file_range		sys32_sync_file_range
++ 315	i386	tee			sys_tee
++ 316	i386	vmsplice		sys_vmsplice			compat_sys_vmsplice
++ 317	i386	move_pages		sys_move_pages			compat_sys_move_pages
++ 318	i386	getcpu			sys_getcpu
++ 319	i386	epoll_pwait		sys_epoll_pwait
++ 320	i386	utimensat		sys_utimensat			compat_sys_utimensat
++ 321	i386	signalfd		sys_signalfd			compat_sys_signalfd
++ 322	i386	timerfd_create		sys_timerfd_create
++ 323	i386	eventfd			sys_eventfd
++ 324	i386	fallocate		sys_fallocate			sys32_fallocate
++ 325	i386	timerfd_settime		sys_timerfd_settime		compat_sys_timerfd_settime
++ 326	i386	timerfd_gettime		sys_timerfd_gettime		compat_sys_timerfd_gettime
++ 327	i386	signalfd4		sys_signalfd4			compat_sys_signalfd4
++ 328	i386	eventfd2		sys_eventfd2
++ 329	i386	epoll_create1		sys_epoll_create1
++ 330	i386	dup3			sys_dup3
++ 331	i386	pipe2			sys_pipe2
++ 332	i386	inotify_init1		sys_inotify_init1
++ 333	i386	preadv			sys_preadv			compat_sys_preadv
++ 334	i386	pwritev			sys_pwritev			compat_sys_pwritev
++ 335	i386	rt_tgsigqueueinfo	sys_rt_tgsigqueueinfo		compat_sys_rt_tgsigqueueinfo
++ 336	i386	perf_event_open		sys_perf_event_open
++ 337	i386	recvmmsg		sys_recvmmsg			compat_sys_recvmmsg
++ 338	i386	fanotify_init		sys_fanotify_init
++ 339	i386	fanotify_mark		sys_fanotify_mark		compat_sys_fanotify_mark
++ 340	i386	prlimit64		sys_prlimit64
++ 341	i386	name_to_handle_at	sys_name_to_handle_at
++ 342	i386	open_by_handle_at	sys_open_by_handle_at		compat_sys_open_by_handle_at
++ 343	i386	clock_adjtime		sys_clock_adjtime		compat_sys_clock_adjtime
++ 344	i386	syncfs			sys_syncfs
++ 345	i386	sendmmsg		sys_sendmmsg			compat_sys_sendmmsg
++ 346	i386	setns			sys_setns
++ 347	i386	process_vm_readv	sys_process_vm_readv		compat_sys_process_vm_readv
++ 348	i386	process_vm_writev	sys_process_vm_writev		compat_sys_process_vm_writev
++ 349	i386	kcmp			sys_kcmp
++ 350	i386	finit_module		sys_finit_module
++ 351	i386	enqueue421		sys_enqueue421
++ 352	i386	dequeue421		sys_dequeue421
++ 353	i386	peekLen421		sys_peekLen421
++ 354	i386	queueLen421		sys_queueLen421
++ 355	i386	clearQueue421		sys_clearQueue421
+\ No newline at end of file
+diff -rcP -X ignorelist.txt linux-3.12.9/driver/src/Makefile project1/driver/src/Makefile
+*** linux-3.12.9/driver/src/Makefile	1969-12-31 19:00:00.000000000 -0500
+--- project1/driver/src/Makefile	2017-11-07 14:40:43.625930443 -0500
+***************
+*** 0 ****
+--- 1,1440 ----
++ VERSION = 3
++ PATCHLEVEL = 12
++ SUBLEVEL = 9
++ EXTRAVERSION = -ru14618-cs421project1
++ NAME = One Giant Leap for Frogkind
++ 
++ # *DOCUMENTATION*
++ # To see a list of typical targets execute "make help"
++ # More info can be located in ./README
++ # Comments in this file are targeted only to the developer, do not
++ # expect to learn how to build the kernel reading this file.
++ 
++ # Do not:
++ # o  use make's built-in rules and variables
++ #    (this increases performance and avoids hard-to-debug behaviour);
++ # o  print "Entering directory ...";
++ MAKEFLAGS += -rR --no-print-directory
++ 
++ # Avoid funny character set dependencies
++ unexport LC_ALL
++ LC_COLLATE=C
++ LC_NUMERIC=C
++ export LC_COLLATE LC_NUMERIC
++ 
++ # We are using a recursive build, so we need to do a little thinking
++ # to get the ordering right.
++ #
++ # Most importantly: sub-Makefiles should only ever modify files in
++ # their own directory. If in some directory we have a dependency on
++ # a file in another dir (which doesn't happen often, but it's often
++ # unavoidable when linking the built-in.o targets which finally
++ # turn into vmlinux), we will call a sub make in that other dir, and
++ # after that we are sure that everything which is in that other dir
++ # is now up to date.
++ #
++ # The only cases where we need to modify files which have global
++ # effects are thus separated out and done before the recursive
++ # descending is started. They are now explicitly listed as the
++ # prepare rule.
++ 
++ # To put more focus on warnings, be less verbose as default
++ # Use 'make V=1' to see the full commands
++ 
++ ifeq ("$(origin V)", "command line")
++   KBUILD_VERBOSE = $(V)
++ endif
++ ifndef KBUILD_VERBOSE
++   KBUILD_VERBOSE = 0
++ endif
++ 
++ # Call a source code checker (by default, "sparse") as part of the
++ # C compilation.
++ #
++ # Use 'make C=1' to enable checking of only re-compiled files.
++ # Use 'make C=2' to enable checking of *all* source files, regardless
++ # of whether they are re-compiled or not.
++ #
++ # See the file "Documentation/sparse.txt" for more details, including
++ # where to get the "sparse" utility.
++ 
++ ifeq ("$(origin C)", "command line")
++   KBUILD_CHECKSRC = $(C)
++ endif
++ ifndef KBUILD_CHECKSRC
++   KBUILD_CHECKSRC = 0
++ endif
++ 
++ # Use make M=dir to specify directory of external module to build
++ # Old syntax make ... SUBDIRS=$PWD is still supported
++ # Setting the environment variable KBUILD_EXTMOD take precedence
++ ifdef SUBDIRS
++   KBUILD_EXTMOD ?= $(SUBDIRS)
++ endif
++ 
++ ifeq ("$(origin M)", "command line")
++   KBUILD_EXTMOD := $(M)
++ endif
++ 
++ # kbuild supports saving output files in a separate directory.
++ # To locate output files in a separate directory two syntaxes are supported.
++ # In both cases the working directory must be the root of the kernel src.
++ # 1) O=
++ # Use "make O=dir/to/store/output/files/"
++ #
++ # 2) Set KBUILD_OUTPUT
++ # Set the environment variable KBUILD_OUTPUT to point to the directory
++ # where the output files shall be placed.
++ # export KBUILD_OUTPUT=dir/to/store/output/files/
++ # make
++ #
++ # The O= assignment takes precedence over the KBUILD_OUTPUT environment
++ # variable.
++ 
++ 
++ # KBUILD_SRC is set on invocation of make in OBJ directory
++ # KBUILD_SRC is not intended to be used by the regular user (for now)
++ ifeq ($(KBUILD_SRC),)
++ 
++ # OK, Make called in directory where kernel src resides
++ # Do we want to locate output files in a separate directory?
++ ifeq ("$(origin O)", "command line")
++   KBUILD_OUTPUT := $(O)
++ endif
++ 
++ ifeq ("$(origin W)", "command line")
++   export KBUILD_ENABLE_EXTRA_GCC_CHECKS := $(W)
++ endif
++ 
++ # That's our default target when none is given on the command line
++ PHONY := _all
++ _all:
++ 
++ # Cancel implicit rules on top Makefile
++ $(CURDIR)/Makefile Makefile: ;
++ 
++ ifneq ($(KBUILD_OUTPUT),)
++ # Invoke a second make in the output directory, passing relevant variables
++ # check that the output directory actually exists
++ saved-output := $(KBUILD_OUTPUT)
++ KBUILD_OUTPUT := $(shell cd $(KBUILD_OUTPUT) && /bin/pwd)
++ $(if $(KBUILD_OUTPUT),, \
++      $(error output directory "$(saved-output)" does not exist))
++ 
++ PHONY += $(MAKECMDGOALS) sub-make
++ 
++ $(filter-out _all sub-make $(CURDIR)/Makefile, $(MAKECMDGOALS)) _all: sub-make
++ 	@:
++ 
++ sub-make: FORCE
++ 	$(if $(KBUILD_VERBOSE:1=),@)$(MAKE) -C $(KBUILD_OUTPUT) \
++ 	KBUILD_SRC=$(CURDIR) \
++ 	KBUILD_EXTMOD="$(KBUILD_EXTMOD)" -f $(CURDIR)/Makefile \
++ 	$(filter-out _all sub-make,$(MAKECMDGOALS))
++ 
++ # Leave processing to above invocation of make
++ skip-makefile := 1
++ endif # ifneq ($(KBUILD_OUTPUT),)
++ endif # ifeq ($(KBUILD_SRC),)
++ 
++ # We process the rest of the Makefile if this is the final invocation of make
++ ifeq ($(skip-makefile),)
++ 
++ # If building an external module we do not care about the all: rule
++ # but instead _all depend on modules
++ PHONY += all
++ ifeq ($(KBUILD_EXTMOD),)
++ _all: all
++ else
++ _all: modules
++ endif
++ 
++ srctree		:= $(if $(KBUILD_SRC),$(KBUILD_SRC),$(CURDIR))
++ objtree		:= $(CURDIR)
++ src		:= $(srctree)
++ obj		:= $(objtree)
++ 
++ VPATH		:= $(srctree)$(if $(KBUILD_EXTMOD),:$(KBUILD_EXTMOD))
++ 
++ export srctree objtree VPATH
++ 
++ 
++ # SUBARCH tells the usermode build what the underlying arch is.  That is set
++ # first, and if a usermode build is happening, the "ARCH=um" on the command
++ # line overrides the setting of ARCH below.  If a native build is happening,
++ # then ARCH is assigned, getting whatever value it gets normally, and 
++ # SUBARCH is subsequently ignored.
++ 
++ SUBARCH := $(shell uname -m | sed -e s/i.86/x86/ -e s/x86_64/x86/ \
++ 				  -e s/sun4u/sparc64/ \
++ 				  -e s/arm.*/arm/ -e s/sa110/arm/ \
++ 				  -e s/s390x/s390/ -e s/parisc64/parisc/ \
++ 				  -e s/ppc.*/powerpc/ -e s/mips.*/mips/ \
++ 				  -e s/sh[234].*/sh/ -e s/aarch64.*/arm64/ )
++ 
++ # Cross compiling and selecting different set of gcc/bin-utils
++ # ---------------------------------------------------------------------------
++ #
++ # When performing cross compilation for other architectures ARCH shall be set
++ # to the target architecture. (See arch/* for the possibilities).
++ # ARCH can be set during invocation of make:
++ # make ARCH=ia64
++ # Another way is to have ARCH set in the environment.
++ # The default ARCH is the host where make is executed.
++ 
++ # CROSS_COMPILE specify the prefix used for all executables used
++ # during compilation. Only gcc and related bin-utils executables
++ # are prefixed with $(CROSS_COMPILE).
++ # CROSS_COMPILE can be set on the command line
++ # make CROSS_COMPILE=ia64-linux-
++ # Alternatively CROSS_COMPILE can be set in the environment.
++ # A third alternative is to store a setting in .config so that plain
++ # "make" in the configured kernel build directory always uses that.
++ # Default value for CROSS_COMPILE is not to prefix executables
++ # Note: Some architectures assign CROSS_COMPILE in their arch/*/Makefile
++ ARCH		?= $(SUBARCH)
++ CROSS_COMPILE	?= $(CONFIG_CROSS_COMPILE:"%"=%)
++ 
++ # Architecture as present in compile.h
++ UTS_MACHINE 	:= $(ARCH)
++ SRCARCH 	:= $(ARCH)
++ 
++ # Additional ARCH settings for x86
++ ifeq ($(ARCH),i386)
++         SRCARCH := x86
++ endif
++ ifeq ($(ARCH),x86_64)
++         SRCARCH := x86
++ endif
++ 
++ # Additional ARCH settings for sparc
++ ifeq ($(ARCH),sparc32)
++        SRCARCH := sparc
++ endif
++ ifeq ($(ARCH),sparc64)
++        SRCARCH := sparc
++ endif
++ 
++ # Additional ARCH settings for sh
++ ifeq ($(ARCH),sh64)
++        SRCARCH := sh
++ endif
++ 
++ # Additional ARCH settings for tile
++ ifeq ($(ARCH),tilepro)
++        SRCARCH := tile
++ endif
++ ifeq ($(ARCH),tilegx)
++        SRCARCH := tile
++ endif
++ 
++ # Where to locate arch specific headers
++ hdr-arch  := $(SRCARCH)
++ 
++ KCONFIG_CONFIG	?= .config
++ export KCONFIG_CONFIG
++ 
++ # SHELL used by kbuild
++ CONFIG_SHELL := $(shell if [ -x "$$BASH" ]; then echo $$BASH; \
++ 	  else if [ -x /bin/bash ]; then echo /bin/bash; \
++ 	  else echo sh; fi ; fi)
++ 
++ HOSTCC       = gcc
++ HOSTCXX      = g++
++ HOSTCFLAGS   = -Wall -Wmissing-prototypes -Wstrict-prototypes -O2 -fomit-frame-pointer
++ HOSTCXXFLAGS = -O2
++ 
++ # Decide whether to build built-in, modular, or both.
++ # Normally, just do built-in.
++ 
++ KBUILD_MODULES :=
++ KBUILD_BUILTIN := 1
++ 
++ #	If we have only "make modules", don't compile built-in objects.
++ #	When we're building modules with modversions, we need to consider
++ #	the built-in objects during the descend as well, in order to
++ #	make sure the checksums are up to date before we record them.
++ 
++ ifeq ($(MAKECMDGOALS),modules)
++   KBUILD_BUILTIN := $(if $(CONFIG_MODVERSIONS),1)
++ endif
++ 
++ #	If we have "make <whatever> modules", compile modules
++ #	in addition to whatever we do anyway.
++ #	Just "make" or "make all" shall build modules as well
++ 
++ ifneq ($(filter all _all modules,$(MAKECMDGOALS)),)
++   KBUILD_MODULES := 1
++ endif
++ 
++ ifeq ($(MAKECMDGOALS),)
++   KBUILD_MODULES := 1
++ endif
++ 
++ export KBUILD_MODULES KBUILD_BUILTIN
++ export KBUILD_CHECKSRC KBUILD_SRC KBUILD_EXTMOD
++ 
++ # Beautify output
++ # ---------------------------------------------------------------------------
++ #
++ # Normally, we echo the whole command before executing it. By making
++ # that echo $($(quiet)$(cmd)), we now have the possibility to set
++ # $(quiet) to choose other forms of output instead, e.g.
++ #
++ #         quiet_cmd_cc_o_c = Compiling $(RELDIR)/$@
++ #         cmd_cc_o_c       = $(CC) $(c_flags) -c -o $@ $<
++ #
++ # If $(quiet) is empty, the whole command will be printed.
++ # If it is set to "quiet_", only the short version will be printed. 
++ # If it is set to "silent_", nothing will be printed at all, since
++ # the variable $(silent_cmd_cc_o_c) doesn't exist.
++ #
++ # A simple variant is to prefix commands with $(Q) - that's useful
++ # for commands that shall be hidden in non-verbose mode.
++ #
++ #	$(Q)ln $@ :<
++ #
++ # If KBUILD_VERBOSE equals 0 then the above command will be hidden.
++ # If KBUILD_VERBOSE equals 1 then the above command is displayed.
++ 
++ ifeq ($(KBUILD_VERBOSE),1)
++   quiet =
++   Q =
++ else
++   quiet=quiet_
++   Q = @
++ endif
++ 
++ # If the user is running make -s (silent mode), suppress echoing of
++ # commands
++ 
++ ifneq ($(filter s% -s%,$(MAKEFLAGS)),)
++   quiet=silent_
++ endif
++ 
++ export quiet Q KBUILD_VERBOSE
++ 
++ 
++ # Look for make include files relative to root of kernel src
++ MAKEFLAGS += --include-dir=$(srctree)
++ 
++ # We need some generic definitions (do not try to remake the file).
++ $(srctree)/scripts/Kbuild.include: ;
++ include $(srctree)/scripts/Kbuild.include
++ 
++ # Make variables (CC, etc...)
++ 
++ AS		= $(CROSS_COMPILE)as
++ LD		= $(CROSS_COMPILE)ld
++ CC		= $(CROSS_COMPILE)gcc
++ CPP		= $(CC) -E
++ AR		= $(CROSS_COMPILE)ar
++ NM		= $(CROSS_COMPILE)nm
++ STRIP		= $(CROSS_COMPILE)strip
++ OBJCOPY		= $(CROSS_COMPILE)objcopy
++ OBJDUMP		= $(CROSS_COMPILE)objdump
++ AWK		= awk
++ GENKSYMS	= scripts/genksyms/genksyms
++ INSTALLKERNEL  := installkernel
++ DEPMOD		= /sbin/depmod
++ PERL		= perl
++ CHECK		= sparse
++ 
++ CHECKFLAGS     := -D__linux__ -Dlinux -D__STDC__ -Dunix -D__unix__ \
++ 		  -Wbitwise -Wno-return-void $(CF)
++ CFLAGS_MODULE   =
++ AFLAGS_MODULE   =
++ LDFLAGS_MODULE  =
++ CFLAGS_KERNEL	=
++ AFLAGS_KERNEL	=
++ CFLAGS_GCOV	= -fprofile-arcs -ftest-coverage
++ 
++ 
++ # Use USERINCLUDE when you must reference the UAPI directories only.
++ USERINCLUDE    := \
++ 		-I$(srctree)/arch/$(hdr-arch)/include/uapi \
++ 		-Iarch/$(hdr-arch)/include/generated/uapi \
++ 		-I$(srctree)/include/uapi \
++ 		-Iinclude/generated/uapi \
++                 -include $(srctree)/include/linux/kconfig.h
++ 
++ # Use LINUXINCLUDE when you must reference the include/ directory.
++ # Needed to be compatible with the O= option
++ LINUXINCLUDE    := \
++ 		-I$(srctree)/arch/$(hdr-arch)/include \
++ 		-Iarch/$(hdr-arch)/include/generated \
++ 		$(if $(KBUILD_SRC), -I$(srctree)/include) \
++ 		-Iinclude \
++ 		$(USERINCLUDE)
++ 
++ KBUILD_CPPFLAGS := -D__KERNEL__
++ 
++ KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
++ 		   -fno-strict-aliasing -fno-common \
++ 		   -Werror-implicit-function-declaration \
++ 		   -Wno-format-security \
++ 		   -fno-delete-null-pointer-checks
++ KBUILD_AFLAGS_KERNEL :=
++ KBUILD_CFLAGS_KERNEL :=
++ KBUILD_AFLAGS   := -D__ASSEMBLY__
++ KBUILD_AFLAGS_MODULE  := -DMODULE
++ KBUILD_CFLAGS_MODULE  := -DMODULE
++ KBUILD_LDFLAGS_MODULE := -T $(srctree)/scripts/module-common.lds
++ 
++ # Read KERNELRELEASE from include/config/kernel.release (if it exists)
++ KERNELRELEASE = $(shell cat include/config/kernel.release 2> /dev/null)
++ KERNELVERSION = $(VERSION)$(if $(PATCHLEVEL),.$(PATCHLEVEL)$(if $(SUBLEVEL),.$(SUBLEVEL)))$(EXTRAVERSION)
++ 
++ export VERSION PATCHLEVEL SUBLEVEL KERNELRELEASE KERNELVERSION
++ export ARCH SRCARCH CONFIG_SHELL HOSTCC HOSTCFLAGS CROSS_COMPILE AS LD CC
++ export CPP AR NM STRIP OBJCOPY OBJDUMP
++ export MAKE AWK GENKSYMS INSTALLKERNEL PERL UTS_MACHINE
++ export HOSTCXX HOSTCXXFLAGS LDFLAGS_MODULE CHECK CHECKFLAGS
++ 
++ export KBUILD_CPPFLAGS NOSTDINC_FLAGS LINUXINCLUDE OBJCOPYFLAGS LDFLAGS
++ export KBUILD_CFLAGS CFLAGS_KERNEL CFLAGS_MODULE CFLAGS_GCOV
++ export KBUILD_AFLAGS AFLAGS_KERNEL AFLAGS_MODULE
++ export KBUILD_AFLAGS_MODULE KBUILD_CFLAGS_MODULE KBUILD_LDFLAGS_MODULE
++ export KBUILD_AFLAGS_KERNEL KBUILD_CFLAGS_KERNEL
++ export KBUILD_ARFLAGS
++ 
++ # When compiling out-of-tree modules, put MODVERDIR in the module
++ # tree rather than in the kernel tree. The kernel tree might
++ # even be read-only.
++ export MODVERDIR := $(if $(KBUILD_EXTMOD),$(firstword $(KBUILD_EXTMOD))/).tmp_versions
++ 
++ # Files to ignore in find ... statements
++ 
++ RCS_FIND_IGNORE := \( -name SCCS -o -name BitKeeper -o -name .svn -o -name CVS \
++ 		   -o -name .pc -o -name .hg -o -name .git \) -prune -o
++ export RCS_TAR_IGNORE := --exclude SCCS --exclude BitKeeper --exclude .svn \
++ 			 --exclude CVS --exclude .pc --exclude .hg --exclude .git
++ 
++ # ===========================================================================
++ # Rules shared between *config targets and build targets
++ 
++ # Basic helpers built in scripts/
++ PHONY += scripts_basic
++ scripts_basic:
++ 	$(Q)$(MAKE) $(build)=scripts/basic
++ 	$(Q)rm -f .tmp_quiet_recordmcount
++ 
++ # To avoid any implicit rule to kick in, define an empty command.
++ scripts/basic/%: scripts_basic ;
++ 
++ PHONY += outputmakefile
++ # outputmakefile generates a Makefile in the output directory, if using a
++ # separate output directory. This allows convenient use of make in the
++ # output directory.
++ outputmakefile:
++ ifneq ($(KBUILD_SRC),)
++ 	$(Q)ln -fsn $(srctree) source
++ 	$(Q)$(CONFIG_SHELL) $(srctree)/scripts/mkmakefile \
++ 	    $(srctree) $(objtree) $(VERSION) $(PATCHLEVEL)
++ endif
++ 
++ # Support for using generic headers in asm-generic
++ PHONY += asm-generic
++ asm-generic:
++ 	$(Q)$(MAKE) -f $(srctree)/scripts/Makefile.asm-generic \
++ 	            src=asm obj=arch/$(SRCARCH)/include/generated/asm
++ 	$(Q)$(MAKE) -f $(srctree)/scripts/Makefile.asm-generic \
++ 	            src=uapi/asm obj=arch/$(SRCARCH)/include/generated/uapi/asm
++ 
++ # To make sure we do not include .config for any of the *config targets
++ # catch them early, and hand them over to scripts/kconfig/Makefile
++ # It is allowed to specify more targets when calling make, including
++ # mixing *config targets and build targets.
++ # For example 'make oldconfig all'.
++ # Detect when mixed targets is specified, and make a second invocation
++ # of make so .config is not included in this case either (for *config).
++ 
++ version_h := include/generated/uapi/linux/version.h
++ 
++ no-dot-config-targets := clean mrproper distclean \
++ 			 cscope gtags TAGS tags help %docs check% coccicheck \
++ 			 $(version_h) headers_% archheaders archscripts \
++ 			 kernelversion %src-pkg
++ 
++ config-targets := 0
++ mixed-targets  := 0
++ dot-config     := 1
++ 
++ ifneq ($(filter $(no-dot-config-targets), $(MAKECMDGOALS)),)
++ 	ifeq ($(filter-out $(no-dot-config-targets), $(MAKECMDGOALS)),)
++ 		dot-config := 0
++ 	endif
++ endif
++ 
++ ifeq ($(KBUILD_EXTMOD),)
++         ifneq ($(filter config %config,$(MAKECMDGOALS)),)
++                 config-targets := 1
++                 ifneq ($(filter-out config %config,$(MAKECMDGOALS)),)
++                         mixed-targets := 1
++                 endif
++         endif
++ endif
++ 
++ ifeq ($(mixed-targets),1)
++ # ===========================================================================
++ # We're called with mixed targets (*config and build targets).
++ # Handle them one by one.
++ 
++ %:: FORCE
++ 	$(Q)$(MAKE) -C $(srctree) KBUILD_SRC= $@
++ 
++ else
++ ifeq ($(config-targets),1)
++ # ===========================================================================
++ # *config targets only - make sure prerequisites are updated, and descend
++ # in scripts/kconfig to make the *config target
++ 
++ # Read arch specific Makefile to set KBUILD_DEFCONFIG as needed.
++ # KBUILD_DEFCONFIG may point out an alternative default configuration
++ # used for 'make defconfig'
++ include $(srctree)/arch/$(SRCARCH)/Makefile
++ export KBUILD_DEFCONFIG KBUILD_KCONFIG
++ 
++ config: scripts_basic outputmakefile FORCE
++ 	$(Q)mkdir -p include/linux include/config
++ 	$(Q)$(MAKE) $(build)=scripts/kconfig $@
++ 
++ %config: scripts_basic outputmakefile FORCE
++ 	$(Q)mkdir -p include/linux include/config
++ 	$(Q)$(MAKE) $(build)=scripts/kconfig $@
++ 
++ else
++ # ===========================================================================
++ # Build targets only - this includes vmlinux, arch specific targets, clean
++ # targets and others. In general all targets except *config targets.
++ 
++ ifeq ($(KBUILD_EXTMOD),)
++ # Additional helpers built in scripts/
++ # Carefully list dependencies so we do not try to build scripts twice
++ # in parallel
++ PHONY += scripts
++ scripts: scripts_basic include/config/auto.conf include/config/tristate.conf \
++ 	 asm-generic
++ 	$(Q)$(MAKE) $(build)=$(@)
++ 
++ # Objects we will link into vmlinux / subdirs we need to visit
++ init-y		:= init/
++ drivers-y	:= drivers/ sound/ firmware/
++ net-y		:= net/
++ libs-y		:= lib/
++ core-y		:= usr/
++ endif # KBUILD_EXTMOD
++ 
++ ifeq ($(dot-config),1)
++ # Read in config
++ -include include/config/auto.conf
++ 
++ ifeq ($(KBUILD_EXTMOD),)
++ # Read in dependencies to all Kconfig* files, make sure to run
++ # oldconfig if changes are detected.
++ -include include/config/auto.conf.cmd
++ 
++ # To avoid any implicit rule to kick in, define an empty command
++ $(KCONFIG_CONFIG) include/config/auto.conf.cmd: ;
++ 
++ # If .config is newer than include/config/auto.conf, someone tinkered
++ # with it and forgot to run make oldconfig.
++ # if auto.conf.cmd is missing then we are probably in a cleaned tree so
++ # we execute the config step to be sure to catch updated Kconfig files
++ include/config/%.conf: $(KCONFIG_CONFIG) include/config/auto.conf.cmd
++ 	$(Q)$(MAKE) -f $(srctree)/Makefile silentoldconfig
++ else
++ # external modules needs include/generated/autoconf.h and include/config/auto.conf
++ # but do not care if they are up-to-date. Use auto.conf to trigger the test
++ PHONY += include/config/auto.conf
++ 
++ include/config/auto.conf:
++ 	$(Q)test -e include/generated/autoconf.h -a -e $@ || (		\
++ 	echo >&2;							\
++ 	echo >&2 "  ERROR: Kernel configuration is invalid.";		\
++ 	echo >&2 "         include/generated/autoconf.h or $@ are missing.";\
++ 	echo >&2 "         Run 'make oldconfig && make prepare' on kernel src to fix it.";	\
++ 	echo >&2 ;							\
++ 	/bin/false)
++ 
++ endif # KBUILD_EXTMOD
++ 
++ else
++ # Dummy target needed, because used as prerequisite
++ include/config/auto.conf: ;
++ endif # $(dot-config)
++ 
++ # The all: target is the default when no target is given on the
++ # command line.
++ # This allow a user to issue only 'make' to build a kernel including modules
++ # Defaults to vmlinux, but the arch makefile usually adds further targets
++ all: vmlinux
++ 
++ ifdef CONFIG_CC_OPTIMIZE_FOR_SIZE
++ KBUILD_CFLAGS	+= -Os $(call cc-disable-warning,maybe-uninitialized,)
++ else
++ KBUILD_CFLAGS	+= -O2
++ endif
++ 
++ include $(srctree)/arch/$(SRCARCH)/Makefile
++ 
++ ifdef CONFIG_READABLE_ASM
++ # Disable optimizations that make assembler listings hard to read.
++ # reorder blocks reorders the control in the function
++ # ipa clone creates specialized cloned functions
++ # partial inlining inlines only parts of functions
++ KBUILD_CFLAGS += $(call cc-option,-fno-reorder-blocks,) \
++                  $(call cc-option,-fno-ipa-cp-clone,) \
++                  $(call cc-option,-fno-partial-inlining)
++ endif
++ 
++ ifneq ($(CONFIG_FRAME_WARN),0)
++ KBUILD_CFLAGS += $(call cc-option,-Wframe-larger-than=${CONFIG_FRAME_WARN})
++ endif
++ 
++ # Force gcc to behave correct even for buggy distributions
++ ifndef CONFIG_CC_STACKPROTECTOR
++ KBUILD_CFLAGS += $(call cc-option, -fno-stack-protector)
++ endif
++ 
++ # This warning generated too much noise in a regular build.
++ # Use make W=1 to enable this warning (see scripts/Makefile.build)
++ KBUILD_CFLAGS += $(call cc-disable-warning, unused-but-set-variable)
++ 
++ ifdef CONFIG_FRAME_POINTER
++ KBUILD_CFLAGS	+= -fno-omit-frame-pointer -fno-optimize-sibling-calls
++ else
++ # Some targets (ARM with Thumb2, for example), can't be built with frame
++ # pointers.  For those, we don't have FUNCTION_TRACER automatically
++ # select FRAME_POINTER.  However, FUNCTION_TRACER adds -pg, and this is
++ # incompatible with -fomit-frame-pointer with current GCC, so we don't use
++ # -fomit-frame-pointer with FUNCTION_TRACER.
++ ifndef CONFIG_FUNCTION_TRACER
++ KBUILD_CFLAGS	+= -fomit-frame-pointer
++ endif
++ endif
++ 
++ ifdef CONFIG_DEBUG_INFO
++ KBUILD_CFLAGS	+= -g
++ KBUILD_AFLAGS	+= -gdwarf-2
++ endif
++ 
++ ifdef CONFIG_DEBUG_INFO_REDUCED
++ KBUILD_CFLAGS 	+= $(call cc-option, -femit-struct-debug-baseonly) \
++ 		   $(call cc-option,-fno-var-tracking)
++ endif
++ 
++ ifdef CONFIG_FUNCTION_TRACER
++ ifdef CONFIG_HAVE_FENTRY
++ CC_USING_FENTRY	:= $(call cc-option, -mfentry -DCC_USING_FENTRY)
++ endif
++ KBUILD_CFLAGS	+= -pg $(CC_USING_FENTRY)
++ KBUILD_AFLAGS	+= $(CC_USING_FENTRY)
++ ifdef CONFIG_DYNAMIC_FTRACE
++ 	ifdef CONFIG_HAVE_C_RECORDMCOUNT
++ 		BUILD_C_RECORDMCOUNT := y
++ 		export BUILD_C_RECORDMCOUNT
++ 	endif
++ endif
++ endif
++ 
++ # We trigger additional mismatches with less inlining
++ ifdef CONFIG_DEBUG_SECTION_MISMATCH
++ KBUILD_CFLAGS += $(call cc-option, -fno-inline-functions-called-once)
++ endif
++ 
++ # arch Makefile may override CC so keep this after arch Makefile is included
++ NOSTDINC_FLAGS += -nostdinc -isystem $(shell $(CC) -print-file-name=include)
++ CHECKFLAGS     += $(NOSTDINC_FLAGS)
++ 
++ # warn about C99 declaration after statement
++ KBUILD_CFLAGS += $(call cc-option,-Wdeclaration-after-statement,)
++ 
++ # disable pointer signed / unsigned warnings in gcc 4.0
++ KBUILD_CFLAGS += $(call cc-disable-warning, pointer-sign)
++ 
++ # disable invalid "can't wrap" optimizations for signed / pointers
++ KBUILD_CFLAGS	+= $(call cc-option,-fno-strict-overflow)
++ 
++ # conserve stack if available
++ KBUILD_CFLAGS   += $(call cc-option,-fconserve-stack)
++ 
++ # use the deterministic mode of AR if available
++ KBUILD_ARFLAGS := $(call ar-option,D)
++ 
++ # check for 'asm goto'
++ ifeq ($(shell $(CONFIG_SHELL) $(srctree)/scripts/gcc-goto.sh $(CC)), y)
++ 	KBUILD_CFLAGS += -DCC_HAVE_ASM_GOTO
++ endif
++ 
++ # Add user supplied CPPFLAGS, AFLAGS and CFLAGS as the last assignments
++ KBUILD_CPPFLAGS += $(KCPPFLAGS)
++ KBUILD_AFLAGS += $(KAFLAGS)
++ KBUILD_CFLAGS += $(KCFLAGS)
++ 
++ # Use --build-id when available.
++ LDFLAGS_BUILD_ID = $(patsubst -Wl$(comma)%,%,\
++ 			      $(call cc-ldoption, -Wl$(comma)--build-id,))
++ KBUILD_LDFLAGS_MODULE += $(LDFLAGS_BUILD_ID)
++ LDFLAGS_vmlinux += $(LDFLAGS_BUILD_ID)
++ 
++ ifeq ($(CONFIG_STRIP_ASM_SYMS),y)
++ LDFLAGS_vmlinux	+= $(call ld-option, -X,)
++ endif
++ 
++ # Default kernel image to build when no specific target is given.
++ # KBUILD_IMAGE may be overruled on the command line or
++ # set in the environment
++ # Also any assignments in arch/$(ARCH)/Makefile take precedence over
++ # this default value
++ export KBUILD_IMAGE ?= vmlinux
++ 
++ #
++ # INSTALL_PATH specifies where to place the updated kernel and system map
++ # images. Default is /boot, but you can set it to other values
++ export	INSTALL_PATH ?= /boot
++ 
++ #
++ # INSTALL_MOD_PATH specifies a prefix to MODLIB for module directory
++ # relocations required by build roots.  This is not defined in the
++ # makefile but the argument can be passed to make if needed.
++ #
++ 
++ MODLIB	= $(INSTALL_MOD_PATH)/lib/modules/$(KERNELRELEASE)
++ export MODLIB
++ 
++ #
++ #  INSTALL_MOD_STRIP, if defined, will cause modules to be
++ #  stripped after they are installed.  If INSTALL_MOD_STRIP is '1', then
++ #  the default option --strip-debug will be used.  Otherwise,
++ #  INSTALL_MOD_STRIP value will be used as the options to the strip command.
++ 
++ ifdef INSTALL_MOD_STRIP
++ ifeq ($(INSTALL_MOD_STRIP),1)
++ mod_strip_cmd = $(STRIP) --strip-debug
++ else
++ mod_strip_cmd = $(STRIP) $(INSTALL_MOD_STRIP)
++ endif # INSTALL_MOD_STRIP=1
++ else
++ mod_strip_cmd = true
++ endif # INSTALL_MOD_STRIP
++ export mod_strip_cmd
++ 
++ 
++ ifdef CONFIG_MODULE_SIG_ALL
++ MODSECKEY = ./signing_key.priv
++ MODPUBKEY = ./signing_key.x509
++ export MODPUBKEY
++ mod_sign_cmd = perl $(srctree)/scripts/sign-file $(CONFIG_MODULE_SIG_HASH) $(MODSECKEY) $(MODPUBKEY)
++ else
++ mod_sign_cmd = true
++ endif
++ export mod_sign_cmd
++ 
++ 
++ ifeq ($(KBUILD_EXTMOD),)
++ core-y		+= kernel/ mm/ fs/ ipc/ security/ crypto/ block/ fifo/
++ 
++ vmlinux-dirs	:= $(patsubst %/,%,$(filter %/, $(init-y) $(init-m) \
++ 		     $(core-y) $(core-m) $(drivers-y) $(drivers-m) \
++ 		     $(net-y) $(net-m) $(libs-y) $(libs-m)))
++ 
++ vmlinux-alldirs	:= $(sort $(vmlinux-dirs) $(patsubst %/,%,$(filter %/, \
++ 		     $(init-n) $(init-) \
++ 		     $(core-n) $(core-) $(drivers-n) $(drivers-) \
++ 		     $(net-n)  $(net-)  $(libs-n)    $(libs-))))
++ 
++ init-y		:= $(patsubst %/, %/built-in.o, $(init-y))
++ core-y		:= $(patsubst %/, %/built-in.o, $(core-y))
++ drivers-y	:= $(patsubst %/, %/built-in.o, $(drivers-y))
++ net-y		:= $(patsubst %/, %/built-in.o, $(net-y))
++ libs-y1		:= $(patsubst %/, %/lib.a, $(libs-y))
++ libs-y2		:= $(patsubst %/, %/built-in.o, $(libs-y))
++ libs-y		:= $(libs-y1) $(libs-y2)
++ 
++ # Externally visible symbols (used by link-vmlinux.sh)
++ export KBUILD_VMLINUX_INIT := $(head-y) $(init-y)
++ export KBUILD_VMLINUX_MAIN := $(core-y) $(libs-y) $(drivers-y) $(net-y)
++ export KBUILD_LDS          := arch/$(SRCARCH)/kernel/vmlinux.lds
++ export LDFLAGS_vmlinux
++ # used by scripts/pacmage/Makefile
++ export KBUILD_ALLDIRS := $(sort $(filter-out arch/%,$(vmlinux-alldirs)) arch Documentation include samples scripts tools virt)
++ 
++ vmlinux-deps := $(KBUILD_LDS) $(KBUILD_VMLINUX_INIT) $(KBUILD_VMLINUX_MAIN)
++ 
++ # Final link of vmlinux
++       cmd_link-vmlinux = $(CONFIG_SHELL) $< $(LD) $(LDFLAGS) $(LDFLAGS_vmlinux)
++ quiet_cmd_link-vmlinux = LINK    $@
++ 
++ # Include targets which we want to
++ # execute if the rest of the kernel build went well.
++ vmlinux: scripts/link-vmlinux.sh $(vmlinux-deps) FORCE
++ ifdef CONFIG_HEADERS_CHECK
++ 	$(Q)$(MAKE) -f $(srctree)/Makefile headers_check
++ endif
++ ifdef CONFIG_SAMPLES
++ 	$(Q)$(MAKE) $(build)=samples
++ endif
++ ifdef CONFIG_BUILD_DOCSRC
++ 	$(Q)$(MAKE) $(build)=Documentation
++ endif
++ 	+$(call if_changed,link-vmlinux)
++ 
++ # The actual objects are generated when descending, 
++ # make sure no implicit rule kicks in
++ $(sort $(vmlinux-deps)): $(vmlinux-dirs) ;
++ 
++ # Handle descending into subdirectories listed in $(vmlinux-dirs)
++ # Preset locale variables to speed up the build process. Limit locale
++ # tweaks to this spot to avoid wrong language settings when running
++ # make menuconfig etc.
++ # Error messages still appears in the original language
++ 
++ PHONY += $(vmlinux-dirs)
++ $(vmlinux-dirs): prepare scripts
++ 	$(Q)$(MAKE) $(build)=$@
++ 
++ define filechk_kernel.release
++ 	echo "$(KERNELVERSION)$$($(CONFIG_SHELL) $(srctree)/scripts/setlocalversion $(srctree))"
++ endef
++ 
++ # Store (new) KERNELRELEASE string in include/config/kernel.release
++ include/config/kernel.release: include/config/auto.conf FORCE
++ 	$(call filechk,kernel.release)
++ 
++ 
++ # Things we need to do before we recursively start building the kernel
++ # or the modules are listed in "prepare".
++ # A multi level approach is used. prepareN is processed before prepareN-1.
++ # archprepare is used in arch Makefiles and when processed asm symlink,
++ # version.h and scripts_basic is processed / created.
++ 
++ # Listed in dependency order
++ PHONY += prepare archprepare prepare0 prepare1 prepare2 prepare3
++ 
++ # prepare3 is used to check if we are building in a separate output directory,
++ # and if so do:
++ # 1) Check that make has not been executed in the kernel src $(srctree)
++ prepare3: include/config/kernel.release
++ ifneq ($(KBUILD_SRC),)
++ 	@$(kecho) '  Using $(srctree) as source for kernel'
++ 	$(Q)if [ -f $(srctree)/.config -o -d $(srctree)/include/config ]; then \
++ 		echo >&2 "  $(srctree) is not clean, please run 'make mrproper'"; \
++ 		echo >&2 "  in the '$(srctree)' directory.";\
++ 		/bin/false; \
++ 	fi;
++ endif
++ 
++ # prepare2 creates a makefile if using a separate output directory
++ prepare2: prepare3 outputmakefile asm-generic
++ 
++ prepare1: prepare2 $(version_h) include/generated/utsrelease.h \
++                    include/config/auto.conf
++ 	$(cmd_crmodverdir)
++ 
++ archprepare: archheaders archscripts prepare1 scripts_basic
++ 
++ prepare0: archprepare FORCE
++ 	$(Q)$(MAKE) $(build)=.
++ 
++ # All the preparing..
++ prepare: prepare0
++ 
++ # Generate some files
++ # ---------------------------------------------------------------------------
++ 
++ # KERNELRELEASE can change from a few different places, meaning version.h
++ # needs to be updated, so this check is forced on all builds
++ 
++ uts_len := 64
++ define filechk_utsrelease.h
++ 	if [ `echo -n "$(KERNELRELEASE)" | wc -c ` -gt $(uts_len) ]; then \
++ 	  echo '"$(KERNELRELEASE)" exceeds $(uts_len) characters' >&2;    \
++ 	  exit 1;                                                         \
++ 	fi;                                                               \
++ 	(echo \#define UTS_RELEASE \"$(KERNELRELEASE)\";)
++ endef
++ 
++ define filechk_version.h
++ 	(echo \#define LINUX_VERSION_CODE $(shell                         \
++ 	expr $(VERSION) \* 65536 + 0$(PATCHLEVEL) \* 256 + 0$(SUBLEVEL)); \
++ 	echo '#define KERNEL_VERSION(a,b,c) (((a) << 16) + ((b) << 8) + (c))';)
++ endef
++ 
++ $(version_h): $(srctree)/Makefile FORCE
++ 	$(call filechk,version.h)
++ 
++ include/generated/utsrelease.h: include/config/kernel.release FORCE
++ 	$(call filechk,utsrelease.h)
++ 
++ PHONY += headerdep
++ headerdep:
++ 	$(Q)find $(srctree)/include/ -name '*.h' | xargs --max-args 1 \
++ 	$(srctree)/scripts/headerdep.pl -I$(srctree)/include
++ 
++ # ---------------------------------------------------------------------------
++ 
++ PHONY += depend dep
++ depend dep:
++ 	@echo '*** Warning: make $@ is unnecessary now.'
++ 
++ # ---------------------------------------------------------------------------
++ # Firmware install
++ INSTALL_FW_PATH=$(INSTALL_MOD_PATH)/lib/firmware
++ export INSTALL_FW_PATH
++ 
++ PHONY += firmware_install
++ firmware_install: FORCE
++ 	@mkdir -p $(objtree)/firmware
++ 	$(Q)$(MAKE) -f $(srctree)/scripts/Makefile.fwinst obj=firmware __fw_install
++ 
++ # ---------------------------------------------------------------------------
++ # Kernel headers
++ 
++ #Default location for installed headers
++ export INSTALL_HDR_PATH = $(objtree)/usr
++ 
++ hdr-inst := -rR -f $(srctree)/scripts/Makefile.headersinst obj
++ 
++ # If we do an all arch process set dst to asm-$(hdr-arch)
++ hdr-dst = $(if $(KBUILD_HEADERS), dst=include/asm-$(hdr-arch), dst=include/asm)
++ 
++ PHONY += archheaders
++ archheaders:
++ 
++ PHONY += archscripts
++ archscripts:
++ 
++ PHONY += __headers
++ __headers: $(version_h) scripts_basic asm-generic archheaders archscripts FORCE
++ 	$(Q)$(MAKE) $(build)=scripts build_unifdef
++ 
++ PHONY += headers_install_all
++ headers_install_all:
++ 	$(Q)$(CONFIG_SHELL) $(srctree)/scripts/headers.sh install
++ 
++ PHONY += headers_install
++ headers_install: __headers
++ 	$(if $(wildcard $(srctree)/arch/$(hdr-arch)/include/uapi/asm/Kbuild),, \
++ 	  $(error Headers not exportable for the $(SRCARCH) architecture))
++ 	$(Q)$(MAKE) $(hdr-inst)=include/uapi
++ 	$(Q)$(MAKE) $(hdr-inst)=arch/$(hdr-arch)/include/uapi/asm $(hdr-dst)
++ 
++ PHONY += headers_check_all
++ headers_check_all: headers_install_all
++ 	$(Q)$(CONFIG_SHELL) $(srctree)/scripts/headers.sh check
++ 
++ PHONY += headers_check
++ headers_check: headers_install
++ 	$(Q)$(MAKE) $(hdr-inst)=include/uapi HDRCHECK=1
++ 	$(Q)$(MAKE) $(hdr-inst)=arch/$(hdr-arch)/include/uapi/asm $(hdr-dst) HDRCHECK=1
++ 
++ # ---------------------------------------------------------------------------
++ # Modules
++ 
++ ifdef CONFIG_MODULES
++ 
++ # By default, build modules as well
++ 
++ all: modules
++ 
++ #	Build modules
++ #
++ #	A module can be listed more than once in obj-m resulting in
++ #	duplicate lines in modules.order files.  Those are removed
++ #	using awk while concatenating to the final file.
++ 
++ PHONY += modules
++ modules: $(vmlinux-dirs) $(if $(KBUILD_BUILTIN),vmlinux) modules.builtin
++ 	$(Q)$(AWK) '!x[$$0]++' $(vmlinux-dirs:%=$(objtree)/%/modules.order) > $(objtree)/modules.order
++ 	@$(kecho) '  Building modules, stage 2.';
++ 	$(Q)$(MAKE) -f $(srctree)/scripts/Makefile.modpost
++ 	$(Q)$(MAKE) -f $(srctree)/scripts/Makefile.fwinst obj=firmware __fw_modbuild
++ 
++ modules.builtin: $(vmlinux-dirs:%=%/modules.builtin)
++ 	$(Q)$(AWK) '!x[$$0]++' $^ > $(objtree)/modules.builtin
++ 
++ %/modules.builtin: include/config/auto.conf
++ 	$(Q)$(MAKE) $(modbuiltin)=$*
++ 
++ 
++ # Target to prepare building external modules
++ PHONY += modules_prepare
++ modules_prepare: prepare scripts
++ 
++ # Target to install modules
++ PHONY += modules_install
++ modules_install: _modinst_ _modinst_post
++ 
++ PHONY += _modinst_
++ _modinst_:
++ 	@rm -rf $(MODLIB)/kernel
++ 	@rm -f $(MODLIB)/source
++ 	@mkdir -p $(MODLIB)/kernel
++ 	@ln -s $(srctree) $(MODLIB)/source
++ 	@if [ ! $(objtree) -ef  $(MODLIB)/build ]; then \
++ 		rm -f $(MODLIB)/build ; \
++ 		ln -s $(objtree) $(MODLIB)/build ; \
++ 	fi
++ 	@cp -f $(objtree)/modules.order $(MODLIB)/
++ 	@cp -f $(objtree)/modules.builtin $(MODLIB)/
++ 	$(Q)$(MAKE) -f $(srctree)/scripts/Makefile.modinst
++ 
++ # This depmod is only for convenience to give the initial
++ # boot a modules.dep even before / is mounted read-write.  However the
++ # boot script depmod is the master version.
++ PHONY += _modinst_post
++ _modinst_post: _modinst_
++ 	$(Q)$(MAKE) -f $(srctree)/scripts/Makefile.fwinst obj=firmware __fw_modinst
++ 	$(call cmd,depmod)
++ 
++ ifeq ($(CONFIG_MODULE_SIG), y)
++ PHONY += modules_sign
++ modules_sign:
++ 	$(Q)$(MAKE) -f $(srctree)/scripts/Makefile.modsign
++ endif
++ 
++ else # CONFIG_MODULES
++ 
++ # Modules not configured
++ # ---------------------------------------------------------------------------
++ 
++ modules modules_install: FORCE
++ 	@echo >&2
++ 	@echo >&2 "The present kernel configuration has modules disabled."
++ 	@echo >&2 "Type 'make config' and enable loadable module support."
++ 	@echo >&2 "Then build a kernel with module support enabled."
++ 	@echo >&2
++ 	@exit 1
++ 
++ endif # CONFIG_MODULES
++ 
++ ###
++ # Cleaning is done on three levels.
++ # make clean     Delete most generated files
++ #                Leave enough to build external modules
++ # make mrproper  Delete the current configuration, and all generated files
++ # make distclean Remove editor backup files, patch leftover files and the like
++ 
++ # Directories & files removed with 'make clean'
++ CLEAN_DIRS  += $(MODVERDIR)
++ 
++ # Directories & files removed with 'make mrproper'
++ MRPROPER_DIRS  += include/config usr/include include/generated          \
++                   arch/*/include/generated
++ MRPROPER_FILES += .config .config.old .version .old_version $(version_h) \
++ 		  Module.symvers tags TAGS cscope* GPATH GTAGS GRTAGS GSYMS \
++ 		  signing_key.priv signing_key.x509 x509.genkey		\
++ 		  extra_certificates signing_key.x509.keyid		\
++ 		  signing_key.x509.signer
++ 
++ # clean - Delete most, but leave enough to build external modules
++ #
++ clean: rm-dirs  := $(CLEAN_DIRS)
++ clean: rm-files := $(CLEAN_FILES)
++ clean-dirs      := $(addprefix _clean_, . $(vmlinux-alldirs) Documentation samples)
++ 
++ PHONY += $(clean-dirs) clean archclean vmlinuxclean
++ $(clean-dirs):
++ 	$(Q)$(MAKE) $(clean)=$(patsubst _clean_%,%,$@)
++ 
++ vmlinuxclean:
++ 	$(Q)$(CONFIG_SHELL) $(srctree)/scripts/link-vmlinux.sh clean
++ 
++ clean: archclean vmlinuxclean
++ 
++ # mrproper - Delete all generated files, including .config
++ #
++ mrproper: rm-dirs  := $(wildcard $(MRPROPER_DIRS))
++ mrproper: rm-files := $(wildcard $(MRPROPER_FILES))
++ mrproper-dirs      := $(addprefix _mrproper_,Documentation/DocBook scripts)
++ 
++ PHONY += $(mrproper-dirs) mrproper archmrproper
++ $(mrproper-dirs):
++ 	$(Q)$(MAKE) $(clean)=$(patsubst _mrproper_%,%,$@)
++ 
++ mrproper: clean archmrproper $(mrproper-dirs)
++ 	$(call cmd,rmdirs)
++ 	$(call cmd,rmfiles)
++ 
++ # distclean
++ #
++ PHONY += distclean
++ 
++ distclean: mrproper
++ 	@find $(srctree) $(RCS_FIND_IGNORE) \
++ 		\( -name '*.orig' -o -name '*.rej' -o -name '*~' \
++ 		-o -name '*.bak' -o -name '#*#' -o -name '.*.orig' \
++ 		-o -name '.*.rej' \
++ 		-o -name '*%' -o -name '.*.cmd' -o -name 'core' \) \
++ 		-type f -print | xargs rm -f
++ 
++ 
++ # Packaging of the kernel to various formats
++ # ---------------------------------------------------------------------------
++ # rpm target kept for backward compatibility
++ package-dir	:= $(srctree)/scripts/package
++ 
++ %src-pkg: FORCE
++ 	$(Q)$(MAKE) $(build)=$(package-dir) $@
++ %pkg: include/config/kernel.release FORCE
++ 	$(Q)$(MAKE) $(build)=$(package-dir) $@
++ rpm: include/config/kernel.release FORCE
++ 	$(Q)$(MAKE) $(build)=$(package-dir) $@
++ 
++ 
++ # Brief documentation of the typical targets used
++ # ---------------------------------------------------------------------------
++ 
++ boards := $(wildcard $(srctree)/arch/$(SRCARCH)/configs/*_defconfig)
++ boards := $(notdir $(boards))
++ board-dirs := $(dir $(wildcard $(srctree)/arch/$(SRCARCH)/configs/*/*_defconfig))
++ board-dirs := $(sort $(notdir $(board-dirs:/=)))
++ 
++ help:
++ 	@echo  'Cleaning targets:'
++ 	@echo  '  clean		  - Remove most generated files but keep the config and'
++ 	@echo  '                    enough build support to build external modules'
++ 	@echo  '  mrproper	  - Remove all generated files + config + various backup files'
++ 	@echo  '  distclean	  - mrproper + remove editor backup and patch files'
++ 	@echo  ''
++ 	@echo  'Configuration targets:'
++ 	@$(MAKE) -f $(srctree)/scripts/kconfig/Makefile help
++ 	@echo  ''
++ 	@echo  'Other generic targets:'
++ 	@echo  '  all		  - Build all targets marked with [*]'
++ 	@echo  '* vmlinux	  - Build the bare kernel'
++ 	@echo  '* modules	  - Build all modules'
++ 	@echo  '  modules_install - Install all modules to INSTALL_MOD_PATH (default: /)'
++ 	@echo  '  firmware_install- Install all firmware to INSTALL_FW_PATH'
++ 	@echo  '                    (default: $$(INSTALL_MOD_PATH)/lib/firmware)'
++ 	@echo  '  dir/            - Build all files in dir and below'
++ 	@echo  '  dir/file.[oisS] - Build specified target only'
++ 	@echo  '  dir/file.lst    - Build specified mixed source/assembly target only'
++ 	@echo  '                    (requires a recent binutils and recent build (System.map))'
++ 	@echo  '  dir/file.ko     - Build module including final link'
++ 	@echo  '  modules_prepare - Set up for building external modules'
++ 	@echo  '  tags/TAGS	  - Generate tags file for editors'
++ 	@echo  '  cscope	  - Generate cscope index'
++ 	@echo  '  gtags           - Generate GNU GLOBAL index'
++ 	@echo  '  kernelrelease	  - Output the release version string'
++ 	@echo  '  kernelversion	  - Output the version stored in Makefile'
++ 	@echo  '  image_name	  - Output the image name'
++ 	@echo  '  headers_install - Install sanitised kernel headers to INSTALL_HDR_PATH'; \
++ 	 echo  '                    (default: $(INSTALL_HDR_PATH))'; \
++ 	 echo  ''
++ 	@echo  'Static analysers'
++ 	@echo  '  checkstack      - Generate a list of stack hogs'
++ 	@echo  '  namespacecheck  - Name space analysis on compiled kernel'
++ 	@echo  '  versioncheck    - Sanity check on version.h usage'
++ 	@echo  '  includecheck    - Check for duplicate included header files'
++ 	@echo  '  export_report   - List the usages of all exported symbols'
++ 	@echo  '  headers_check   - Sanity check on exported headers'
++ 	@echo  '  headerdep       - Detect inclusion cycles in headers'
++ 	@$(MAKE) -f $(srctree)/scripts/Makefile.help checker-help
++ 	@echo  ''
++ 	@echo  'Kernel packaging:'
++ 	@$(MAKE) $(build)=$(package-dir) help
++ 	@echo  ''
++ 	@echo  'Documentation targets:'
++ 	@$(MAKE) -f $(srctree)/Documentation/DocBook/Makefile dochelp
++ 	@echo  ''
++ 	@echo  'Architecture specific targets ($(SRCARCH)):'
++ 	@$(if $(archhelp),$(archhelp),\
++ 		echo '  No architecture specific help defined for $(SRCARCH)')
++ 	@echo  ''
++ 	@$(if $(boards), \
++ 		$(foreach b, $(boards), \
++ 		printf "  %-24s - Build for %s\\n" $(b) $(subst _defconfig,,$(b));) \
++ 		echo '')
++ 	@$(if $(board-dirs), \
++ 		$(foreach b, $(board-dirs), \
++ 		printf "  %-16s - Show %s-specific targets\\n" help-$(b) $(b);) \
++ 		printf "  %-16s - Show all of the above\\n" help-boards; \
++ 		echo '')
++ 
++ 	@echo  '  make V=0|1 [targets] 0 => quiet build (default), 1 => verbose build'
++ 	@echo  '  make V=2   [targets] 2 => give reason for rebuild of target'
++ 	@echo  '  make O=dir [targets] Locate all output files in "dir", including .config'
++ 	@echo  '  make C=1   [targets] Check all c source with $$CHECK (sparse by default)'
++ 	@echo  '  make C=2   [targets] Force check of all c source with $$CHECK'
++ 	@echo  '  make RECORDMCOUNT_WARN=1 [targets] Warn about ignored mcount sections'
++ 	@echo  '  make W=n   [targets] Enable extra gcc checks, n=1,2,3 where'
++ 	@echo  '		1: warnings which may be relevant and do not occur too often'
++ 	@echo  '		2: warnings which occur quite often but may still be relevant'
++ 	@echo  '		3: more obscure warnings, can most likely be ignored'
++ 	@echo  '		Multiple levels can be combined with W=12 or W=123'
++ 	@echo  ''
++ 	@echo  'Execute "make" or "make all" to build all targets marked with [*] '
++ 	@echo  'For further info see the ./README file'
++ 
++ 
++ help-board-dirs := $(addprefix help-,$(board-dirs))
++ 
++ help-boards: $(help-board-dirs)
++ 
++ boards-per-dir = $(notdir $(wildcard $(srctree)/arch/$(SRCARCH)/configs/$*/*_defconfig))
++ 
++ $(help-board-dirs): help-%:
++ 	@echo  'Architecture specific targets ($(SRCARCH) $*):'
++ 	@$(if $(boards-per-dir), \
++ 		$(foreach b, $(boards-per-dir), \
++ 		printf "  %-24s - Build for %s\\n" $*/$(b) $(subst _defconfig,,$(b));) \
++ 		echo '')
++ 
++ 
++ # Documentation targets
++ # ---------------------------------------------------------------------------
++ %docs: scripts_basic FORCE
++ 	$(Q)$(MAKE) $(build)=scripts build_docproc
++ 	$(Q)$(MAKE) $(build)=Documentation/DocBook $@
++ 
++ else # KBUILD_EXTMOD
++ 
++ ###
++ # External module support.
++ # When building external modules the kernel used as basis is considered
++ # read-only, and no consistency checks are made and the make
++ # system is not used on the basis kernel. If updates are required
++ # in the basis kernel ordinary make commands (without M=...) must
++ # be used.
++ #
++ # The following are the only valid targets when building external
++ # modules.
++ # make M=dir clean     Delete all automatically generated files
++ # make M=dir modules   Make all modules in specified dir
++ # make M=dir	       Same as 'make M=dir modules'
++ # make M=dir modules_install
++ #                      Install the modules built in the module directory
++ #                      Assumes install directory is already created
++ 
++ # We are always building modules
++ KBUILD_MODULES := 1
++ PHONY += crmodverdir
++ crmodverdir:
++ 	$(cmd_crmodverdir)
++ 
++ PHONY += $(objtree)/Module.symvers
++ $(objtree)/Module.symvers:
++ 	@test -e $(objtree)/Module.symvers || ( \
++ 	echo; \
++ 	echo "  WARNING: Symbol version dump $(objtree)/Module.symvers"; \
++ 	echo "           is missing; modules will have no dependencies and modversions."; \
++ 	echo )
++ 
++ module-dirs := $(addprefix _module_,$(KBUILD_EXTMOD))
++ PHONY += $(module-dirs) modules
++ $(module-dirs): crmodverdir $(objtree)/Module.symvers
++ 	$(Q)$(MAKE) $(build)=$(patsubst _module_%,%,$@)
++ 
++ modules: $(module-dirs)
++ 	@$(kecho) '  Building modules, stage 2.';
++ 	$(Q)$(MAKE) -f $(srctree)/scripts/Makefile.modpost
++ 
++ PHONY += modules_install
++ modules_install: _emodinst_ _emodinst_post
++ 
++ install-dir := $(if $(INSTALL_MOD_DIR),$(INSTALL_MOD_DIR),extra)
++ PHONY += _emodinst_
++ _emodinst_:
++ 	$(Q)mkdir -p $(MODLIB)/$(install-dir)
++ 	$(Q)$(MAKE) -f $(srctree)/scripts/Makefile.modinst
++ 
++ PHONY += _emodinst_post
++ _emodinst_post: _emodinst_
++ 	$(call cmd,depmod)
++ 
++ clean-dirs := $(addprefix _clean_,$(KBUILD_EXTMOD))
++ 
++ PHONY += $(clean-dirs) clean
++ $(clean-dirs):
++ 	$(Q)$(MAKE) $(clean)=$(patsubst _clean_%,%,$@)
++ 
++ clean:	rm-dirs := $(MODVERDIR)
++ clean: rm-files := $(KBUILD_EXTMOD)/Module.symvers
++ 
++ help:
++ 	@echo  '  Building external modules.'
++ 	@echo  '  Syntax: make -C path/to/kernel/src M=$$PWD target'
++ 	@echo  ''
++ 	@echo  '  modules         - default target, build the module(s)'
++ 	@echo  '  modules_install - install the module'
++ 	@echo  '  clean           - remove generated files in module directory only'
++ 	@echo  ''
++ 
++ # Dummies...
++ PHONY += prepare scripts
++ prepare: ;
++ scripts: ;
++ endif # KBUILD_EXTMOD
++ 
++ clean: $(clean-dirs)
++ 	$(call cmd,rmdirs)
++ 	$(call cmd,rmfiles)
++ 	@find $(if $(KBUILD_EXTMOD), $(KBUILD_EXTMOD), .) $(RCS_FIND_IGNORE) \
++ 		\( -name '*.[oas]' -o -name '*.ko' -o -name '.*.cmd' \
++ 		-o -name '*.ko.*' \
++ 		-o -name '.*.d' -o -name '.*.tmp' -o -name '*.mod.c' \
++ 		-o -name '*.symtypes' -o -name 'modules.order' \
++ 		-o -name modules.builtin -o -name '.tmp_*.o.*' \
++ 		-o -name '*.gcno' \) -type f -print | xargs rm -f
++ 
++ # Generate tags for editors
++ # ---------------------------------------------------------------------------
++ quiet_cmd_tags = GEN     $@
++       cmd_tags = $(CONFIG_SHELL) $(srctree)/scripts/tags.sh $@
++ 
++ tags TAGS cscope gtags: FORCE
++ 	$(call cmd,tags)
++ 
++ # Scripts to check various things for consistency
++ # ---------------------------------------------------------------------------
++ 
++ PHONY += includecheck versioncheck coccicheck namespacecheck export_report
++ 
++ includecheck:
++ 	find $(srctree)/* $(RCS_FIND_IGNORE) \
++ 		-name '*.[hcS]' -type f -print | sort \
++ 		| xargs $(PERL) -w $(srctree)/scripts/checkincludes.pl
++ 
++ versioncheck:
++ 	find $(srctree)/* $(RCS_FIND_IGNORE) \
++ 		-name '*.[hcS]' -type f -print | sort \
++ 		| xargs $(PERL) -w $(srctree)/scripts/checkversion.pl
++ 
++ coccicheck:
++ 	$(Q)$(CONFIG_SHELL) $(srctree)/scripts/$@
++ 
++ namespacecheck:
++ 	$(PERL) $(srctree)/scripts/namespace.pl
++ 
++ export_report:
++ 	$(PERL) $(srctree)/scripts/export_report.pl
++ 
++ endif #ifeq ($(config-targets),1)
++ endif #ifeq ($(mixed-targets),1)
++ 
++ PHONY += checkstack kernelrelease kernelversion image_name
++ 
++ # UML needs a little special treatment here.  It wants to use the host
++ # toolchain, so needs $(SUBARCH) passed to checkstack.pl.  Everyone
++ # else wants $(ARCH), including people doing cross-builds, which means
++ # that $(SUBARCH) doesn't work here.
++ ifeq ($(ARCH), um)
++ CHECKSTACK_ARCH := $(SUBARCH)
++ else
++ CHECKSTACK_ARCH := $(ARCH)
++ endif
++ checkstack:
++ 	$(OBJDUMP) -d vmlinux $$(find . -name '*.ko') | \
++ 	$(PERL) $(src)/scripts/checkstack.pl $(CHECKSTACK_ARCH)
++ 
++ kernelrelease:
++ 	@echo "$(KERNELVERSION)$$($(CONFIG_SHELL) $(srctree)/scripts/setlocalversion $(srctree))"
++ 
++ kernelversion:
++ 	@echo $(KERNELVERSION)
++ 
++ image_name:
++ 	@echo $(KBUILD_IMAGE)
++ 
++ # Clear a bunch of variables before executing the submake
++ tools/: FORCE
++ 	$(Q)mkdir -p $(objtree)/tools
++ 	$(Q)$(MAKE) LDFLAGS= MAKEFLAGS="$(filter --j% -j,$(MAKEFLAGS))" O=$(objtree) subdir=tools -C $(src)/tools/
++ 
++ tools/%: FORCE
++ 	$(Q)mkdir -p $(objtree)/tools
++ 	$(Q)$(MAKE) LDFLAGS= MAKEFLAGS="$(filter --j% -j,$(MAKEFLAGS))" O=$(objtree) subdir=tools -C $(src)/tools/ $*
++ 
++ # Single targets
++ # ---------------------------------------------------------------------------
++ # Single targets are compatible with:
++ # - build with mixed source and output
++ # - build with separate output dir 'make O=...'
++ # - external modules
++ #
++ #  target-dir => where to store outputfile
++ #  build-dir  => directory in kernel source tree to use
++ 
++ ifeq ($(KBUILD_EXTMOD),)
++         build-dir  = $(patsubst %/,%,$(dir $@))
++         target-dir = $(dir $@)
++ else
++         zap-slash=$(filter-out .,$(patsubst %/,%,$(dir $@)))
++         build-dir  = $(KBUILD_EXTMOD)$(if $(zap-slash),/$(zap-slash))
++         target-dir = $(if $(KBUILD_EXTMOD),$(dir $<),$(dir $@))
++ endif
++ 
++ %.s: %.c prepare scripts FORCE
++ 	$(Q)$(MAKE) $(build)=$(build-dir) $(target-dir)$(notdir $@)
++ %.i: %.c prepare scripts FORCE
++ 	$(Q)$(MAKE) $(build)=$(build-dir) $(target-dir)$(notdir $@)
++ %.o: %.c prepare scripts FORCE
++ 	$(Q)$(MAKE) $(build)=$(build-dir) $(target-dir)$(notdir $@)
++ %.lst: %.c prepare scripts FORCE
++ 	$(Q)$(MAKE) $(build)=$(build-dir) $(target-dir)$(notdir $@)
++ %.s: %.S prepare scripts FORCE
++ 	$(Q)$(MAKE) $(build)=$(build-dir) $(target-dir)$(notdir $@)
++ %.o: %.S prepare scripts FORCE
++ 	$(Q)$(MAKE) $(build)=$(build-dir) $(target-dir)$(notdir $@)
++ %.symtypes: %.c prepare scripts FORCE
++ 	$(Q)$(MAKE) $(build)=$(build-dir) $(target-dir)$(notdir $@)
++ 
++ # Modules
++ /: prepare scripts FORCE
++ 	$(cmd_crmodverdir)
++ 	$(Q)$(MAKE) KBUILD_MODULES=$(if $(CONFIG_MODULES),1) \
++ 	$(build)=$(build-dir)
++ %/: prepare scripts FORCE
++ 	$(cmd_crmodverdir)
++ 	$(Q)$(MAKE) KBUILD_MODULES=$(if $(CONFIG_MODULES),1) \
++ 	$(build)=$(build-dir)
++ %.ko: prepare scripts FORCE
++ 	$(cmd_crmodverdir)
++ 	$(Q)$(MAKE) KBUILD_MODULES=$(if $(CONFIG_MODULES),1)   \
++ 	$(build)=$(build-dir) $(@:.ko=.o)
++ 	$(Q)$(MAKE) -f $(srctree)/scripts/Makefile.modpost
++ 
++ # FIXME Should go into a make.lib or something 
++ # ===========================================================================
++ 
++ quiet_cmd_rmdirs = $(if $(wildcard $(rm-dirs)),CLEAN   $(wildcard $(rm-dirs)))
++       cmd_rmdirs = rm -rf $(rm-dirs)
++ 
++ quiet_cmd_rmfiles = $(if $(wildcard $(rm-files)),CLEAN   $(wildcard $(rm-files)))
++       cmd_rmfiles = rm -f $(rm-files)
++ 
++ # Run depmod only if we have System.map and depmod is executable
++ quiet_cmd_depmod = DEPMOD  $(KERNELRELEASE)
++       cmd_depmod = $(CONFIG_SHELL) $(srctree)/scripts/depmod.sh $(DEPMOD) \
++                    $(KERNELRELEASE) "$(patsubst y,_,$(CONFIG_HAVE_UNDERSCORE_SYMBOL_PREFIX))"
++ 
++ # Create temporary dir for module support files
++ # clean it up only when building all modules
++ cmd_crmodverdir = $(Q)mkdir -p $(MODVERDIR) \
++                   $(if $(KBUILD_MODULES),; rm -f $(MODVERDIR)/*)
++ 
++ # read all saved command lines
++ 
++ targets := $(wildcard $(sort $(targets)))
++ cmd_files := $(wildcard .*.cmd $(foreach f,$(targets),$(dir $(f)).$(notdir $(f)).cmd))
++ 
++ ifneq ($(cmd_files),)
++   $(cmd_files): ;	# Do not try to update included dependency files
++   include $(cmd_files)
++ endif
++ 
++ # Shorthand for $(Q)$(MAKE) -f scripts/Makefile.clean obj=dir
++ # Usage:
++ # $(Q)$(MAKE) $(clean)=dir
++ clean := -f $(if $(KBUILD_SRC),$(srctree)/)scripts/Makefile.clean obj
++ 
++ endif	# skip-makefile
++ 
++ PHONY += FORCE
++ FORCE:
++ 
++ # Declare the contents of the .PHONY variable as phony.  We keep that
++ # information in a variable so we can use it in if_changed and friends.
++ .PHONY: $(PHONY)
+Binary files linux-3.12.9/driver/test and project1/driver/test differ
+diff -rcP -X ignorelist.txt linux-3.12.9/driver/test.c project1/driver/test.c
+*** linux-3.12.9/driver/test.c	1969-12-31 19:00:00.000000000 -0500
+--- project1/driver/test.c	2017-11-08 02:29:10.962209526 -0500
+***************
+*** 0 ****
+--- 1,245 ----
++ #define _GNU_SOURCE
++ 
++ #include <stdio.h>
++ #include <unistd.h>
++ #include <linux/kernel.h>
++ #include <sys/syscall.h>
++ #include <string.h>
++ #include <errno.h>
++ 
++ #define __NR_enqueue421 351
++ #define __NR_dequeue421 352
++ #define __NR_peekLen421 353
++ #define __NR_queueLen421 354
++ #define __NR_clearQueue421 355
++ 
++ #define MSGS 8
++ 
++ /* FUNCTIONS COPIED FROM PARK'S TEST_FIFO.C FOR EASE OF PRINTING INFORMATION */
++ long enqueue421(void *data, long len) {
++     long val;
++ 
++     printf("  enqueue421(data=%p (\"%.*s\"), len=%d): returned ", data, len, data, len);
++     fflush(stdout);
++     val = syscall(__NR_enqueue421, data, len);
++     printf("%d", val);
++     fflush(stdout);
++     if (val < 0)
++ 	   perror("; ERR:");
++     else
++ 	   printf("\n");
++     return val;
++ }
++ 
++ long dequeue421(void *data, long len) {
++     long val;
++ 
++     printf("  dequeue421(data=%p, len=%d): returned ", data, len);
++     fflush(stdout);
++     val = syscall(__NR_dequeue421, data, len);
++     printf("%d", val);
++     fflush(stdout);
++     if (val < 0)
++ 	   perror("; ERR:");
++     else
++ 	   printf("\n");
++     return val;
++ }
++ 
++ long peekLen421() {
++     long val;
++ 
++     printf("  peekLen421(): returned ");
++     fflush(stdout);
++     val = syscall(__NR_peekLen421);
++     printf("%d", val);
++     fflush(stdout);
++     if (val < 0)
++ 	   perror("; ERR:");
++     else
++ 	   printf("\n");
++     return val;
++ }
++ 
++ long queueLen421() {
++     long val;
++ 
++     printf("  queueLen421(): returned ");
++     fflush(stdout);
++     val = syscall(__NR_queueLen421);
++     printf("%d", val);
++     fflush(stdout);
++     if (val < 0)
++ 	   perror("; ERR:");
++     else
++ 	   printf("\n");
++     return val;
++ }
++ 
++ long clearQueue421() {
++     long val;
++ 
++     printf("  clearQueue421(): returned ");
++     fflush(stdout);
++     val = syscall(__NR_clearQueue421);
++     printf("%d", val);
++     fflush(stdout);
++     if (val < 0)
++ 	   perror("; ERR:");
++     else
++ 	   printf("\n");
++     return val;
++ }
++ 
++ 
++ /* BEGIN ROBUST TESTING */
++ int main(int argc, char *argv[]) {
++   int test_ver;
++ 
++   char wbuf[MSGS][512];
++   char rbuf[513];
++   long len;
++   int i;
++ 
++   /* Make sure correct number of arguments inserted */
++   if(argc != 2) {
++     fprintf(stderr, "syntax: %s <valid/invalid: 0/-1>\n", argv[0]);
++     exit(1);
++   }
++ 
++   printf("BEGIN TEST FILE\n");
++   test_ver = atoi(argv[1]); /* Determine whether to run valid input test or invalid input test */
++ 
++   if(test_ver == 0) {
++     printf("----------- VALID INPUT TEST -----------\n\n");
++ 
++     /* Add one item to queue */
++     printf("Round 1: Single enqueue and dequeue\n");
++     enqueue421("CMSC 421: Operating SystemsXXX", 27);
++     queueLen421();
++     peekLen421();
++     memset(rbuf, 0, sizeof(rbuf));
++     dequeue421(rbuf, sizeof(rbuf) - 1);
++     printf("  Expected \"CMSC 421: Operating Systems\"; Got \"%s\"", rbuf);
++     if (strcmp(rbuf, "CMSC 421: Operating Systems")) {
++        printf("ERROR!\n");
++     }
++     else {
++        printf("\n");
++     }
++     queueLen421();
++     clearQueue421();   
++     printf("  Should see error:");
++     peekLen421();
++ 
++     printf("\nRound 2: Multiple enqueues and dequeues w/ different message sizes\n");
++     for(i = 0; i < MSGS; i++) {
++       sprintf(wbuf[i], "Ltr A%.*s", i, "BCDEFGHIJKL");
++       enqueue421(wbuf[i], strlen(wbuf[i]));
++     }
++     queueLen421();
++     for(i = 0; i < MSGS; i++) {
++       printf("  Should see len=%d", strlen(wbuf[i]));
++       len = peekLen421();
++       if(len != strlen(wbuf[i])) {
++ 	printf("ERROR!\n");
++       }
++       memset(rbuf, 0, sizeof(rbuf));
++       dequeue421(rbuf, 512);
++       printf("  Expected \"%s\"; Got \"%s\"", wbuf[i], rbuf);
++       if (strcmp(rbuf, wbuf[i])) {
++         printf("ERROR!\n");
++       }
++       else {
++         printf("\n");
++       }
++       queueLen421();
++     }
++     printf("  Should see error:");
++     peekLen421();
++ 
++     for(i = 0; i < 5; i++) {
++       enqueue421("CMSC 421 Operating Systems Project 1", 36);
++     }
++     printf("queuelen should be 5:");
++     queueLen421();
++     memset(rbuf, 0, sizeof(rbuf));
++     dequeue421(rbuf, 512);
++     clearQueue421();
++     printf("queuelen should be 0:");
++     queueLen421();
++     printf("dequeue should fail:");
++     dequeue421(rbuf, 512);
++ 
++     printf("\nRound 3: Multiple enqueues and dequeues switching back and forth\n");
++     enqueue421("CMSC 421 Operating Systems", 27);
++     enqueue421("Professor: John Park", 20);
++     enqueue421("TA: Leslie McAdoo", 17);
++     printf("queuelen should be 3:");
++     queueLen421();
++     peekLen421();
++     memset(rbuf, 0, sizeof(rbuf));
++     dequeue421(rbuf, sizeof(rbuf) - 1);
++     memset(rbuf, 0, sizeof(rbuf));
++     dequeue421(rbuf, sizeof(rbuf) - 1);
++     printf("  Expected \"Professor: John Park\"; Got \"%s\"", rbuf);
++     if (strcmp(rbuf, "Professor: John Park")) {
++        printf("ERROR!\n");
++     }
++     else {
++        printf("\n");
++     }
++     printf("queuelen should be 1:");
++     queueLen421();
++     peekLen421();
++     enqueue421("Student: Stephanie Tam", 22);
++     enqueue421("Student: Veronica Clements", 26);
++     printf("queuelen should be 3:");
++     queueLen421();
++     clearQueue421();
++     printf("queuelen should be 0:");
++     queueLen421();
++ 
++     printf("\nTests complete.\n");
++     printf("\n--------- END VALID INPUT TEST ---------\n");
++   }
++   else if(test_ver == -1) {
++     printf("---------- INVALID INPUT TEST ----------\n\n");
++     
++     printf("sys_enqueue421(): testing correct handling of errors\n");
++     enqueue421("len < 0 error", -1);
++     enqueue421("len > 512 error", 791);
++     enqueue421(NULL, 512);
++     
++     printf("\nsys_dequeue421(): testing correct handling of errors\n");
++     memset(rbuf, 0, sizeof(rbuf));
++     dequeue421(rbuf, -1);
++     
++     enqueue421("valid placeholder", 17);
++     memset(rbuf, 0, sizeof(rbuf));
++     dequeue421(rbuf, 5);
++     memset(rbuf, 0, sizeof(rbuf));
++     printf("  dequeue should succeed:");
++     dequeue421(rbuf, 512);
++     memset(rbuf, 0, sizeof(rbuf));
++     printf("  queuelen should be 0-->dequeue should fail:");
++     dequeue421(rbuf, 512);
++ 
++     printf("\nsys_peekLen421(): testing correct handling of errors\n");
++     /* This section before peekLen421() should get queuelen = 0 */
++ 
++     printf("  queuelen should be 0:");
++     queueLen421();
++     printf("  peeklen should fail:");
++     peekLen421();
++ 
++     printf("\n-------- END INVALID INPUT TEST --------\n");
++   }
++   else {
++     fprintf(stderr, "Invalid argument given. Should be either 0 (valid) or -1 (invalid).\n");
++     exit(1);
++   }
++ 
++   printf("\nEND TEST FILE\n");
++   return 0;
++ }
+diff -rcP -X ignorelist.txt linux-3.12.9/driver/test_fifo.c project1/driver/test_fifo.c
+*** linux-3.12.9/driver/test_fifo.c	1969-12-31 19:00:00.000000000 -0500
+--- project1/driver/test_fifo.c	2017-11-07 00:08:07.442038241 -0500
+***************
+*** 0 ****
+--- 1,177 ----
++ /* #define _GNU_SOURCE */
++ 
++ #include <stdio.h>
++ #include <unistd.h>
++ #include <linux/kernel.h>
++ #include <sys/syscall.h>
++ #include <string.h>
++ #include <errno.h>
++ 
++ #define __NR_enqueue421		351
++ #define __NR_dequeue421		352
++ #define __NR_peekLen421		353
++ #define __NR_queueLen421	354
++ #define __NR_clearQueue421	355
++ 
++ #define RND2_RNDS	5
++ 
++ 
++ long enqueue421(void *data, long len) {
++     long val;
++ 
++     printf("enqueue421(data=%p (\"%.*s\"), len=%d): returned ", data,
++ 	   len, data, len);
++     fflush(stdout);
++     val = syscall(__NR_enqueue421, data, len);
++     printf("%d", val);
++     fflush(stdout);
++     if (val < 0)
++ 	perror("; ERR:");
++     else
++ 	printf("\n");
++     return val;
++ }
++ 
++ long dequeue421(void *data, long len) {
++     long val;
++ 
++     printf("dequeue421(data=%p, len=%d): returned ", data, len);
++     fflush(stdout);
++     val = syscall(__NR_dequeue421, data, len);
++     printf("%d", val);
++     fflush(stdout);
++     if (val < 0)
++ 	perror("; ERR:");
++     else
++ 	printf("\n");
++     return val;
++ }
++ 
++ long peekLen421() {
++     long val;
++ 
++     printf("peekLen421(): returned ");
++     fflush(stdout);
++     val = syscall(__NR_peekLen421);
++     printf("%d", val);
++     fflush(stdout);
++     if (val < 0)
++ 	perror("; ERR:");
++     else
++ 	printf("\n");
++     return val;
++ }
++ 
++ long queueLen421() {
++     long val;
++ 
++     printf("queueLen421(): returned ");
++     fflush(stdout);
++     val = syscall(__NR_queueLen421);
++     printf("%d", val);
++     fflush(stdout);
++     if (val < 0)
++ 	perror("; ERR:");
++     else
++ 	printf("\n");
++     return val;
++ }
++ 
++ long clearQueue421() {
++     long val;
++ 
++     printf("clearQueue421(): returned ");
++     fflush(stdout);
++     val = syscall(__NR_clearQueue421);
++     printf("%d", val);
++     fflush(stdout);
++     if (val < 0)
++ 	perror("; ERR:");
++     else
++ 	printf("\n");
++     return val;
++ }
++ 
++ int main(int argc, char **argv) {
++     int phase;
++     char wbuf[RND2_RNDS][512];
++     char rbuf[513];
++     long len;
++     int i;
++ 
++     if (argc != 2) {
++ 	fprintf(stderr, "syntax: %s <phase#:1-4>\n", argv[0]);
++ 	exit(1);
++ 	
++     }
++ 
++     phase = atoi(argv[1]);
++ 	    
++     if (phase == 1) {
++ 	printf("Phase I: Simple calls\n");
++ 	printf("Ignore error msgs from this program--use \"dmesg\" to see kernel printfs.\n");
++     }
++     else if (phase == 2) {
++ 	printf("Phase II: Simple calls w/parameter validation\n");
++ 	printf("Ignore error msgs from this program--use \"dmesg\" to see kernel printfs.\n");
++ 	printf("Verify that kernel funcs received args passed in.\n");
++     }
++     else if (phase == 3) {
++ 	printf("Phase III: Actual FIFO421 functionality validation\n");
++     }
++     enqueue421("Hello, worldXXXXX", 12);
++     queueLen421();
++     peekLen421();
++     memset(rbuf, 0, sizeof(rbuf));
++     dequeue421(rbuf, sizeof(rbuf) - 1);
++     printf("  Expected \"Hello, world\"; Got \"%s\"", rbuf);
++     if (strcmp(rbuf, "Hello, world")) {
++ 	printf("ERROR!\n");
++     } else {
++ 	printf("\n");
++     }
++     queueLen421();
++     clearQueue421();
++ 
++     printf("Should see error: ");
++     peekLen421();
++ 
++     if (phase == 4) {
++ 	printf("Round 2: Multiple enqueues, multiple dequeues\n");
++ 	for (i = 0; i < RND2_RNDS; i++) {
++ 	    /* Each msg will be a different size: */
++ 	    sprintf(wbuf[i], "Msg 0%.*s", i, "1234567890");
++ 	    enqueue421(wbuf[i], strlen(wbuf[i]));
++ 	}
++ 	queueLen421();
++ 	for (i = 0; i < RND2_RNDS; i++) {
++ 	    printf("Should see len=%d: ", strlen(wbuf[i]));
++ 	    len = peekLen421();
++ 	    if (len != strlen(wbuf[i])) {
++ 		printf("ERROR!\n");
++ 	    }
++ 	    memset(rbuf, 0, sizeof(rbuf));
++ 	    dequeue421(rbuf, 512);
++ 	    printf("  Expected \"%s\"; Got \"%s\"", wbuf[i], rbuf);
++ 	    if (strcmp(rbuf, wbuf[i])) {
++ 		printf("ERROR!\n");
++ 	    } else {
++ 		printf("\n");
++ 	    }
++ 	    queueLen421();
++ 	}
++ 
++ 	for (i = 0; i < 3; i++) {
++ 	    enqueue421("Hello, world", 12);
++ 	}
++ 	printf("queuelen should be 3: ");
++ 	queueLen421();
++ 	clearQueue421();
++ 	printf("queuelen should be 0: ");
++ 	queueLen421();
++ 	printf("dequeue should fail: ");
++ 	dequeue421(rbuf, 512);
++ 	printf("Tests complete\n");
++     }
++     return 0;
++ }
+diff -rcP -X ignorelist.txt linux-3.12.9/fifo/fifo.c project1/fifo/fifo.c
+*** linux-3.12.9/fifo/fifo.c	1969-12-31 19:00:00.000000000 -0500
+--- project1/fifo/fifo.c	2017-11-08 02:14:04.647559593 -0500
+***************
+*** 0 ****
+--- 1,189 ----
++ #include <linux/kernel.h>
++ 
++ #include <linux/list.h>
++ #include <linux/klist.h>
++ #include <linux/slab.h>
++ #include <linux/uaccess.h>
++ #include <linux/semaphore.h>
++ #include <linux/errno.h>
++ 
++ #define __user __attribute__((noderef, address_space(1)))
++ #define MAX_MSG_LEN 512
++ 
++ struct msgQueue {
++   struct list_head list;  /* Kernel list structure */
++   long msgLen;            /* Keep track of message length */
++   char *m_message;        /* Store message */
++ };
++ 
++ DEFINE_SEMAPHORE(lock);  /* Use when item could potentially be accessed and/or changed out of order */
++ /*  lock: down(&lock); 
++  *  unlock: up(&lock);
++  */
++ 
++ static LIST_HEAD(myQueueList);
++ static int queue_size = 0;
++ 
++ 
++ asmlinkage long sys_enqueue421(const void __user *data, long len) {
++   /*  Description: Add new item to tail of queue
++    *  Parameters: *data (new pointer to add in)
++    *              len (# bytes to copy starting at data pointer)
++    *  Return: Success => 0
++    *          Error => -ENOMEM (insufficient memory to add or store item)
++    *                   -EFAULT (error accessing user-space pointer to copy data)
++    *                   -EINVAL (len < 0)
++    *                   -E2BIG (len > 512)
++    *  Other Notes: Don't modify any data in queue on any error
++    */
++   printk("SYS_ENQUEUE421() called\n");
++ 
++   if(len < 0) {  /* Check if number of bytes to copy is negative */
++     printk("ERROR: 'len' is negative\n");
++     return -EINVAL;
++   }
++   if (len > MAX_MSG_LEN) {  /* Check if # of bytes to copy is greater than the allowed message size */
++     printk("ERROR: Length of message too long\n");
++     return -E2BIG;
++   }
++ 
++   char *copied_space = kmalloc(len, GFP_KERNEL);  /* Copy bytes from user to kernel */
++   if(copied_space == NULL) {  /* Check if there's enough memory to add item */
++     printk("ERROR: Not enough memory\n");
++     return -ENOMEM;
++   }
++   if(access_ok(VERIFY_READ, data, len)) {  /* Check if user-space is accessible */
++     long from_userSpace = __copy_from_user(copied_space, data, sizeof(data));
++     if(from_userSpace != 0) {  /* Extra checking to ensure the space actually is accessible */
++       printk("ERROR: Can't access user-space\n");
++       return -EFAULT;
++     }
++   }
++     
++   /* Create new struct w/ data from given user-space pointer */
++   struct msgQueue *new_item = kmalloc(sizeof(struct msgQueue), GFP_KERNEL);
++   new_item->msgLen = len;
++   new_item->m_message = data;
++ 
++   down(&lock);
++   list_add_tail(&(new_item->list), &myQueueList);  /* Add item to end of queue */
++   queue_size++;
++   up(&lock);
++ 
++   return 0;
++ }
++ 
++ asmlinkage long sys_dequeue421(void __user *data, long len) {
++   /*  Description: Remove item from head of queue & store data back into user-space
++    *  Parameters: *data (user's space to store dequeued entry)
++    *              len (upper limit on # bytes allocated starting at pointer data)
++    *  Return: Success => 0
++    *          Error => -ENODATA (empty queue)
++    *                   -EFAULT (error accessing user-space pointer to copy data)
++    *                   -EINVAL (len < 0)
++    *                   -E2BIG (space allocated not large enough to store entire message)
++    *  Other Notes: Don't modify any data in queue on any error.
++    *               If len > size of element at head of queue, copy # of bytes contained in head element & ignore any extra space
++    */
++   printk("SYS_DEQUEUE421() called\n");
++   struct msgQueue *temp;
++ 
++   if(len < 0) {  /* Check if bytes allocated is negative */
++     printk("ERROR: 'len' is negative\n");
++     return -EINVAL;
++   }
++ 
++   down(&lock);
++   temp = list_entry(myQueueList.next, struct msgQueue, list);  /* Grab first item in queue */
++ 
++   if(queue_size == 0) {  /* Check if queue is empty */
++     printk("ERROR: Queue is empty\n");
++     up(&lock);
++     return -ENODATA;
++   }
++   up(&lock);
++ 
++   if(len < temp->msgLen) {  /* Check if user tried to allocate too little space */
++     printk("ERROR: Not enough space to store message\n");
++     return -E2BIG;
++   }
++   if(len >= temp->msgLen) {  /* Sets allocated space to size of message if space is too large */
++     len = temp->msgLen;
++   }
++   if(access_ok(VERIFY_READ, data, len)) {  /* Check if user-space is accessible */
++     long to_userSpace = copy_to_user(data, (void*)(temp->m_message), len);  /* Copy data to user-space */
++     if(to_userSpace != 0) {  /* Extra checking to ensure the space actually is accessible */
++       printk("ERROR: Can't access user-space\n");
++       return -EFAULT;
++     }
++   }
++ 
++   down(&lock);
++   list_del(myQueueList.next);  /* Delete entry and free allocated space */
++   queue_size--;  
++   up(&lock);
++ 
++   kfree(temp);  /* Don't need to lock the free(), so not included in the lock */
++ 
++   return 0;
++ }
++ 
++ asmlinkage long sys_peekLen421(void) {
++   /*  Description: Retrieve length of element at head of queue
++    *  Parameters: None
++    *  Return: Success => size of data in element at head of queue (in bytes)
++    *          Error => -ENODATA (empty queue)
++    *  Other Notes:
++    */
++   printk("SYS_PEEKLEN421() called\n");
++   struct msgQueue *temp;
++ 
++   down(&lock);
++   if(queue_size == 0) {  /* Check if queue is empty */
++     printk("ERROR: Queue is empty\n");
++     up(&lock);  /* Need to release before or else starvation can happen */
++     return -ENODATA;
++   }
++   
++   temp = list_entry(myQueueList.next, struct msgQueue, list);  /* Get first element's size, in bytes, and return it */
++   up(&lock);
++ 
++   return temp->msgLen;
++ }
++ 
++ asmlinkage long sys_queueLen421() {
++   /*  Description: Retrive # of elements currently in queue
++    *  Parameters: 
++    *  Return: Success => # of elements in queue
++    *  Other Notes:
++    */
++   printk("SYS_QUEUELEN421() called\n");
++   int temp_size;
++ 
++   down(&lock);
++   temp_size = queue_size;
++   up(&lock);
++ 
++   return temp_size;
++ }
++ 
++ asmlinkage long sys_clearQueue421() {
++   /*  Description: Deletes all messages currently in queue, freeing all memory & releasing stored elements
++    *  Parameters: 
++    *  Return: 0 => success
++    *  Other Notes:
++    */
++   printk("SYS_CLEARQUEUE421() called\n");
++   struct msgQueue *loop_cursor, *temp_stg;  /* Create variables to keep track of spot while iterating */
++ 
++   down(&lock);
++   /* Iterate through queue and delete then free each item */
++   list_for_each_entry_safe(loop_cursor, temp_stg, &myQueueList, list) {
++     list_del(&(loop_cursor->list));
++     kfree(loop_cursor);
++     queue_size--;  /* Be sure to keep track of queue's size */
++   }
++   up(&lock);
++ 
++   return 0;
++ }
+diff -rcP -X ignorelist.txt linux-3.12.9/fifo/Makefile project1/fifo/Makefile
+*** linux-3.12.9/fifo/Makefile	1969-12-31 19:00:00.000000000 -0500
+--- project1/fifo/Makefile	2017-11-05 13:44:11.999802636 -0500
+***************
+*** 0 ****
+--- 1 ----
++ obj-y := fifo.o
+Binary files linux-3.12.9/hello/a.out and project1/hello/a.out differ
+diff -rcP -X ignorelist.txt linux-3.12.9/hello/hello.c project1/hello/hello.c
+*** linux-3.12.9/hello/hello.c	1969-12-31 19:00:00.000000000 -0500
+--- project1/hello/hello.c	2017-11-03 23:02:20.537749983 -0400
+***************
+*** 0 ****
+--- 1,6 ----
++ #include <linux/kernel.h>
++ 
++ asmlinkage long sys_hello(void) {
++   printk("Hello World\n");
++   return 0;
++ }
+diff -rcP -X ignorelist.txt linux-3.12.9/hello/Makefile project1/hello/Makefile
+*** linux-3.12.9/hello/Makefile	1969-12-31 19:00:00.000000000 -0500
+--- project1/hello/Makefile	2017-11-03 23:11:58.810012818 -0400
+***************
+*** 0 ****
+--- 1 ----
++ obj-y := hello.o
+diff -rcP -X ignorelist.txt linux-3.12.9/hello/test.c project1/hello/test.c
+*** linux-3.12.9/hello/test.c	1969-12-31 19:00:00.000000000 -0500
+--- project1/hello/test.c	2017-11-04 01:58:04.884508556 -0400
+***************
+*** 0 ****
+--- 1,15 ----
++ #include <stdio.h>
++ #include <unistd.h>
++ #include <linux/kernel.h>
++ #include <sys/syscall.h>
++ 
++ #define __NR_hello 351
++ 
++ long hello_syscall(void) {
++   return syscall(__NR_hello);
++ }
++ 
++ int main(int argc, char *argv[]) {
++   hello_syscall();
++   return 0;
++ }
+diff -rcP -X ignorelist.txt linux-3.12.9/Makefile project1/Makefile
+*** linux-3.12.9/Makefile	2014-01-25 12:18:00.000000000 -0500
+--- project1/Makefile	2017-11-05 11:46:37.634794657 -0500
+***************
+*** 1,7 ****
+  VERSION = 3
+  PATCHLEVEL = 12
+  SUBLEVEL = 9
+! EXTRAVERSION =
+  NAME = One Giant Leap for Frogkind
+  
+  # *DOCUMENTATION*
+--- 1,7 ----
+  VERSION = 3
+  PATCHLEVEL = 12
+  SUBLEVEL = 9
+! EXTRAVERSION = -ru14618-cs421project1
+  NAME = One Giant Leap for Frogkind
+  
+  # *DOCUMENTATION*
+***************
+*** 733,739 ****
+  
+  
+  ifeq ($(KBUILD_EXTMOD),)
+! core-y		+= kernel/ mm/ fs/ ipc/ security/ crypto/ block/
+  
+  vmlinux-dirs	:= $(patsubst %/,%,$(filter %/, $(init-y) $(init-m) \
+  		     $(core-y) $(core-m) $(drivers-y) $(drivers-m) \
+--- 733,739 ----
+  
+  
+  ifeq ($(KBUILD_EXTMOD),)
+! core-y		+= kernel/ mm/ fs/ ipc/ security/ crypto/ block/ fifo/
+  
+  vmlinux-dirs	:= $(patsubst %/,%,$(filter %/, $(init-y) $(init-m) \
+  		     $(core-y) $(core-m) $(drivers-y) $(drivers-m) \
+diff -rcP -X ignorelist.txt linux-3.12.9/patchprj1.diff project1/patchprj1.diff
+*** linux-3.12.9/patchprj1.diff	1969-12-31 19:00:00.000000000 -0500
+--- project1/patchprj1.diff	2017-11-08 03:33:13.890681565 -0500
+***************
+*** 0 ****
+--- 1,2564 ----
++ diff -rcP -X ignorelist.txt linux-3.12.9/arch/x86/syscalls/syscall_32.tbl project1/arch/x86/syscalls/syscall_32.tbl
++ *** linux-3.12.9/arch/x86/syscalls/syscall_32.tbl	2014-01-25 12:18:00.000000000 -0500
++ --- project1/arch/x86/syscalls/syscall_32.tbl	2017-11-05 09:39:31.724085680 -0500
++ ***************
++ *** 357,359 ****
++ --- 357,364 ----
++   348	i386	process_vm_writev	sys_process_vm_writev		compat_sys_process_vm_writev
++   349	i386	kcmp			sys_kcmp
++   350	i386	finit_module		sys_finit_module
++ + 351	i386	enqueue421		sys_enqueue421
++ + 352	i386	dequeue421		sys_dequeue421
++ + 353	i386	peekLen421		sys_peekLen421
++ + 354	i386	queueLen421		sys_queueLen421
++ + 355	i386	clearQueue421		sys_clearQueue421
++ \ No newline at end of file
++ diff -rcP -X ignorelist.txt linux-3.12.9/driver/Makefile project1/driver/Makefile
++ *** linux-3.12.9/driver/Makefile	1969-12-31 19:00:00.000000000 -0500
++ --- project1/driver/Makefile	2017-11-07 23:01:11.465471306 -0500
++ ***************
++ *** 0 ****
++ --- 1,11 ----
++ + CFLAGS= -g -Wall -ansi
++ + 
++ + test: test.o
++ + 	gcc ${CFLAGS} test.c -o test
++ + 
++ + test_fifo: test_fifo.o
++ + 	gcc ${CFLAGS} test_fifo.c -o test_fifo
++ + 
++ + clean:
++ + 	rm -f *~
++ + 	rm -f *.o*
++ diff -rcP -X ignorelist.txt linux-3.12.9/driver/src/arch/x86/syscalls/syscall_32.tbl project1/driver/src/arch/x86/syscalls/syscall_32.tbl
++ *** linux-3.12.9/driver/src/arch/x86/syscalls/syscall_32.tbl	1969-12-31 19:00:00.000000000 -0500
++ --- project1/driver/src/arch/x86/syscalls/syscall_32.tbl	2017-11-07 14:40:16.601722184 -0500
++ ***************
++ *** 0 ****
++ --- 1,364 ----
++ + #
++ + # 32-bit system call numbers and entry vectors
++ + #
++ + # The format is:
++ + # <number> <abi> <name> <entry point> <compat entry point>
++ + #
++ + # The abi is always "i386" for this file.
++ + #
++ + 0	i386	restart_syscall		sys_restart_syscall
++ + 1	i386	exit			sys_exit
++ + 2	i386	fork			sys_fork			stub32_fork
++ + 3	i386	read			sys_read
++ + 4	i386	write			sys_write
++ + 5	i386	open			sys_open			compat_sys_open
++ + 6	i386	close			sys_close
++ + 7	i386	waitpid			sys_waitpid			sys32_waitpid
++ + 8	i386	creat			sys_creat
++ + 9	i386	link			sys_link
++ + 10	i386	unlink			sys_unlink
++ + 11	i386	execve			sys_execve			stub32_execve
++ + 12	i386	chdir			sys_chdir
++ + 13	i386	time			sys_time			compat_sys_time
++ + 14	i386	mknod			sys_mknod
++ + 15	i386	chmod			sys_chmod
++ + 16	i386	lchown			sys_lchown16
++ + 17	i386	break
++ + 18	i386	oldstat			sys_stat
++ + 19	i386	lseek			sys_lseek			compat_sys_lseek
++ + 20	i386	getpid			sys_getpid
++ + 21	i386	mount			sys_mount			compat_sys_mount
++ + 22	i386	umount			sys_oldumount
++ + 23	i386	setuid			sys_setuid16
++ + 24	i386	getuid			sys_getuid16
++ + 25	i386	stime			sys_stime			compat_sys_stime
++ + 26	i386	ptrace			sys_ptrace			compat_sys_ptrace
++ + 27	i386	alarm			sys_alarm
++ + 28	i386	oldfstat		sys_fstat
++ + 29	i386	pause			sys_pause
++ + 30	i386	utime			sys_utime			compat_sys_utime
++ + 31	i386	stty
++ + 32	i386	gtty
++ + 33	i386	access			sys_access
++ + 34	i386	nice			sys_nice
++ + 35	i386	ftime
++ + 36	i386	sync			sys_sync
++ + 37	i386	kill			sys_kill
++ + 38	i386	rename			sys_rename
++ + 39	i386	mkdir			sys_mkdir
++ + 40	i386	rmdir			sys_rmdir
++ + 41	i386	dup			sys_dup
++ + 42	i386	pipe			sys_pipe
++ + 43	i386	times			sys_times			compat_sys_times
++ + 44	i386	prof
++ + 45	i386	brk			sys_brk
++ + 46	i386	setgid			sys_setgid16
++ + 47	i386	getgid			sys_getgid16
++ + 48	i386	signal			sys_signal
++ + 49	i386	geteuid			sys_geteuid16
++ + 50	i386	getegid			sys_getegid16
++ + 51	i386	acct			sys_acct
++ + 52	i386	umount2			sys_umount
++ + 53	i386	lock
++ + 54	i386	ioctl			sys_ioctl			compat_sys_ioctl
++ + 55	i386	fcntl			sys_fcntl			compat_sys_fcntl64
++ + 56	i386	mpx
++ + 57	i386	setpgid			sys_setpgid
++ + 58	i386	ulimit
++ + 59	i386	oldolduname		sys_olduname
++ + 60	i386	umask			sys_umask
++ + 61	i386	chroot			sys_chroot
++ + 62	i386	ustat			sys_ustat			compat_sys_ustat
++ + 63	i386	dup2			sys_dup2
++ + 64	i386	getppid			sys_getppid
++ + 65	i386	getpgrp			sys_getpgrp
++ + 66	i386	setsid			sys_setsid
++ + 67	i386	sigaction		sys_sigaction			compat_sys_sigaction
++ + 68	i386	sgetmask		sys_sgetmask
++ + 69	i386	ssetmask		sys_ssetmask
++ + 70	i386	setreuid		sys_setreuid16
++ + 71	i386	setregid		sys_setregid16
++ + 72	i386	sigsuspend		sys_sigsuspend			sys_sigsuspend
++ + 73	i386	sigpending		sys_sigpending			compat_sys_sigpending
++ + 74	i386	sethostname		sys_sethostname
++ + 75	i386	setrlimit		sys_setrlimit			compat_sys_setrlimit
++ + 76	i386	getrlimit		sys_old_getrlimit		compat_sys_old_getrlimit
++ + 77	i386	getrusage		sys_getrusage			compat_sys_getrusage
++ + 78	i386	gettimeofday		sys_gettimeofday		compat_sys_gettimeofday
++ + 79	i386	settimeofday		sys_settimeofday		compat_sys_settimeofday
++ + 80	i386	getgroups		sys_getgroups16
++ + 81	i386	setgroups		sys_setgroups16
++ + 82	i386	select			sys_old_select			compat_sys_old_select
++ + 83	i386	symlink			sys_symlink
++ + 84	i386	oldlstat		sys_lstat
++ + 85	i386	readlink		sys_readlink
++ + 86	i386	uselib			sys_uselib
++ + 87	i386	swapon			sys_swapon
++ + 88	i386	reboot			sys_reboot
++ + 89	i386	readdir			sys_old_readdir			compat_sys_old_readdir
++ + 90	i386	mmap			sys_old_mmap			sys32_mmap
++ + 91	i386	munmap			sys_munmap
++ + 92	i386	truncate		sys_truncate			compat_sys_truncate
++ + 93	i386	ftruncate		sys_ftruncate			compat_sys_ftruncate
++ + 94	i386	fchmod			sys_fchmod
++ + 95	i386	fchown			sys_fchown16
++ + 96	i386	getpriority		sys_getpriority
++ + 97	i386	setpriority		sys_setpriority
++ + 98	i386	profil
++ + 99	i386	statfs			sys_statfs			compat_sys_statfs
++ + 100	i386	fstatfs			sys_fstatfs			compat_sys_fstatfs
++ + 101	i386	ioperm			sys_ioperm
++ + 102	i386	socketcall		sys_socketcall			compat_sys_socketcall
++ + 103	i386	syslog			sys_syslog
++ + 104	i386	setitimer		sys_setitimer			compat_sys_setitimer
++ + 105	i386	getitimer		sys_getitimer			compat_sys_getitimer
++ + 106	i386	stat			sys_newstat			compat_sys_newstat
++ + 107	i386	lstat			sys_newlstat			compat_sys_newlstat
++ + 108	i386	fstat			sys_newfstat			compat_sys_newfstat
++ + 109	i386	olduname		sys_uname
++ + 110	i386	iopl			sys_iopl
++ + 111	i386	vhangup			sys_vhangup
++ + 112	i386	idle
++ + 113	i386	vm86old			sys_vm86old			sys32_vm86_warning
++ + 114	i386	wait4			sys_wait4			compat_sys_wait4
++ + 115	i386	swapoff			sys_swapoff
++ + 116	i386	sysinfo			sys_sysinfo			compat_sys_sysinfo
++ + 117	i386	ipc			sys_ipc				compat_sys_ipc
++ + 118	i386	fsync			sys_fsync
++ + 119	i386	sigreturn		sys_sigreturn			stub32_sigreturn
++ + 120	i386	clone			sys_clone			stub32_clone
++ + 121	i386	setdomainname		sys_setdomainname
++ + 122	i386	uname			sys_newuname
++ + 123	i386	modify_ldt		sys_modify_ldt
++ + 124	i386	adjtimex		sys_adjtimex			compat_sys_adjtimex
++ + 125	i386	mprotect		sys_mprotect
++ + 126	i386	sigprocmask		sys_sigprocmask			compat_sys_sigprocmask
++ + 127	i386	create_module
++ + 128	i386	init_module		sys_init_module
++ + 129	i386	delete_module		sys_delete_module
++ + 130	i386	get_kernel_syms
++ + 131	i386	quotactl		sys_quotactl			sys32_quotactl
++ + 132	i386	getpgid			sys_getpgid
++ + 133	i386	fchdir			sys_fchdir
++ + 134	i386	bdflush			sys_bdflush
++ + 135	i386	sysfs			sys_sysfs
++ + 136	i386	personality		sys_personality
++ + 137	i386	afs_syscall
++ + 138	i386	setfsuid		sys_setfsuid16
++ + 139	i386	setfsgid		sys_setfsgid16
++ + 140	i386	_llseek			sys_llseek
++ + 141	i386	getdents		sys_getdents			compat_sys_getdents
++ + 142	i386	_newselect		sys_select			compat_sys_select
++ + 143	i386	flock			sys_flock
++ + 144	i386	msync			sys_msync
++ + 145	i386	readv			sys_readv			compat_sys_readv
++ + 146	i386	writev			sys_writev			compat_sys_writev
++ + 147	i386	getsid			sys_getsid
++ + 148	i386	fdatasync		sys_fdatasync
++ + 149	i386	_sysctl			sys_sysctl			compat_sys_sysctl
++ + 150	i386	mlock			sys_mlock
++ + 151	i386	munlock			sys_munlock
++ + 152	i386	mlockall		sys_mlockall
++ + 153	i386	munlockall		sys_munlockall
++ + 154	i386	sched_setparam		sys_sched_setparam
++ + 155	i386	sched_getparam		sys_sched_getparam
++ + 156	i386	sched_setscheduler	sys_sched_setscheduler
++ + 157	i386	sched_getscheduler	sys_sched_getscheduler
++ + 158	i386	sched_yield		sys_sched_yield
++ + 159	i386	sched_get_priority_max	sys_sched_get_priority_max
++ + 160	i386	sched_get_priority_min	sys_sched_get_priority_min
++ + 161	i386	sched_rr_get_interval	sys_sched_rr_get_interval	compat_sys_sched_rr_get_interval
++ + 162	i386	nanosleep		sys_nanosleep			compat_sys_nanosleep
++ + 163	i386	mremap			sys_mremap
++ + 164	i386	setresuid		sys_setresuid16
++ + 165	i386	getresuid		sys_getresuid16
++ + 166	i386	vm86			sys_vm86			sys32_vm86_warning
++ + 167	i386	query_module
++ + 168	i386	poll			sys_poll
++ + 169	i386	nfsservctl
++ + 170	i386	setresgid		sys_setresgid16
++ + 171	i386	getresgid		sys_getresgid16
++ + 172	i386	prctl			sys_prctl
++ + 173	i386	rt_sigreturn		sys_rt_sigreturn		stub32_rt_sigreturn
++ + 174	i386	rt_sigaction		sys_rt_sigaction		compat_sys_rt_sigaction
++ + 175	i386	rt_sigprocmask		sys_rt_sigprocmask
++ + 176	i386	rt_sigpending		sys_rt_sigpending		compat_sys_rt_sigpending
++ + 177	i386	rt_sigtimedwait		sys_rt_sigtimedwait		compat_sys_rt_sigtimedwait
++ + 178	i386	rt_sigqueueinfo		sys_rt_sigqueueinfo		compat_sys_rt_sigqueueinfo
++ + 179	i386	rt_sigsuspend		sys_rt_sigsuspend
++ + 180	i386	pread64			sys_pread64			sys32_pread
++ + 181	i386	pwrite64		sys_pwrite64			sys32_pwrite
++ + 182	i386	chown			sys_chown16
++ + 183	i386	getcwd			sys_getcwd
++ + 184	i386	capget			sys_capget
++ + 185	i386	capset			sys_capset
++ + 186	i386	sigaltstack		sys_sigaltstack			compat_sys_sigaltstack
++ + 187	i386	sendfile		sys_sendfile			compat_sys_sendfile
++ + 188	i386	getpmsg
++ + 189	i386	putpmsg
++ + 190	i386	vfork			sys_vfork			stub32_vfork
++ + 191	i386	ugetrlimit		sys_getrlimit			compat_sys_getrlimit
++ + 192	i386	mmap2			sys_mmap_pgoff
++ + 193	i386	truncate64		sys_truncate64			sys32_truncate64
++ + 194	i386	ftruncate64		sys_ftruncate64			sys32_ftruncate64
++ + 195	i386	stat64			sys_stat64			sys32_stat64
++ + 196	i386	lstat64			sys_lstat64			sys32_lstat64
++ + 197	i386	fstat64			sys_fstat64			sys32_fstat64
++ + 198	i386	lchown32		sys_lchown
++ + 199	i386	getuid32		sys_getuid
++ + 200	i386	getgid32		sys_getgid
++ + 201	i386	geteuid32		sys_geteuid
++ + 202	i386	getegid32		sys_getegid
++ + 203	i386	setreuid32		sys_setreuid
++ + 204	i386	setregid32		sys_setregid
++ + 205	i386	getgroups32		sys_getgroups
++ + 206	i386	setgroups32		sys_setgroups
++ + 207	i386	fchown32		sys_fchown
++ + 208	i386	setresuid32		sys_setresuid
++ + 209	i386	getresuid32		sys_getresuid
++ + 210	i386	setresgid32		sys_setresgid
++ + 211	i386	getresgid32		sys_getresgid
++ + 212	i386	chown32			sys_chown
++ + 213	i386	setuid32		sys_setuid
++ + 214	i386	setgid32		sys_setgid
++ + 215	i386	setfsuid32		sys_setfsuid
++ + 216	i386	setfsgid32		sys_setfsgid
++ + 217	i386	pivot_root		sys_pivot_root
++ + 218	i386	mincore			sys_mincore
++ + 219	i386	madvise			sys_madvise
++ + 220	i386	getdents64		sys_getdents64			compat_sys_getdents64
++ + 221	i386	fcntl64			sys_fcntl64			compat_sys_fcntl64
++ + # 222 is unused
++ + # 223 is unused
++ + 224	i386	gettid			sys_gettid
++ + 225	i386	readahead		sys_readahead			sys32_readahead
++ + 226	i386	setxattr		sys_setxattr
++ + 227	i386	lsetxattr		sys_lsetxattr
++ + 228	i386	fsetxattr		sys_fsetxattr
++ + 229	i386	getxattr		sys_getxattr
++ + 230	i386	lgetxattr		sys_lgetxattr
++ + 231	i386	fgetxattr		sys_fgetxattr
++ + 232	i386	listxattr		sys_listxattr
++ + 233	i386	llistxattr		sys_llistxattr
++ + 234	i386	flistxattr		sys_flistxattr
++ + 235	i386	removexattr		sys_removexattr
++ + 236	i386	lremovexattr		sys_lremovexattr
++ + 237	i386	fremovexattr		sys_fremovexattr
++ + 238	i386	tkill			sys_tkill
++ + 239	i386	sendfile64		sys_sendfile64
++ + 240	i386	futex			sys_futex			compat_sys_futex
++ + 241	i386	sched_setaffinity	sys_sched_setaffinity		compat_sys_sched_setaffinity
++ + 242	i386	sched_getaffinity	sys_sched_getaffinity		compat_sys_sched_getaffinity
++ + 243	i386	set_thread_area		sys_set_thread_area
++ + 244	i386	get_thread_area		sys_get_thread_area
++ + 245	i386	io_setup		sys_io_setup			compat_sys_io_setup
++ + 246	i386	io_destroy		sys_io_destroy
++ + 247	i386	io_getevents		sys_io_getevents		compat_sys_io_getevents
++ + 248	i386	io_submit		sys_io_submit			compat_sys_io_submit
++ + 249	i386	io_cancel		sys_io_cancel
++ + 250	i386	fadvise64		sys_fadvise64			sys32_fadvise64
++ + # 251 is available for reuse (was briefly sys_set_zone_reclaim)
++ + 252	i386	exit_group		sys_exit_group
++ + 253	i386	lookup_dcookie		sys_lookup_dcookie		compat_sys_lookup_dcookie
++ + 254	i386	epoll_create		sys_epoll_create
++ + 255	i386	epoll_ctl		sys_epoll_ctl
++ + 256	i386	epoll_wait		sys_epoll_wait
++ + 257	i386	remap_file_pages	sys_remap_file_pages
++ + 258	i386	set_tid_address		sys_set_tid_address
++ + 259	i386	timer_create		sys_timer_create		compat_sys_timer_create
++ + 260	i386	timer_settime		sys_timer_settime		compat_sys_timer_settime
++ + 261	i386	timer_gettime		sys_timer_gettime		compat_sys_timer_gettime
++ + 262	i386	timer_getoverrun	sys_timer_getoverrun
++ + 263	i386	timer_delete		sys_timer_delete
++ + 264	i386	clock_settime		sys_clock_settime		compat_sys_clock_settime
++ + 265	i386	clock_gettime		sys_clock_gettime		compat_sys_clock_gettime
++ + 266	i386	clock_getres		sys_clock_getres		compat_sys_clock_getres
++ + 267	i386	clock_nanosleep		sys_clock_nanosleep		compat_sys_clock_nanosleep
++ + 268	i386	statfs64		sys_statfs64			compat_sys_statfs64
++ + 269	i386	fstatfs64		sys_fstatfs64			compat_sys_fstatfs64
++ + 270	i386	tgkill			sys_tgkill
++ + 271	i386	utimes			sys_utimes			compat_sys_utimes
++ + 272	i386	fadvise64_64		sys_fadvise64_64		sys32_fadvise64_64
++ + 273	i386	vserver
++ + 274	i386	mbind			sys_mbind
++ + 275	i386	get_mempolicy		sys_get_mempolicy		compat_sys_get_mempolicy
++ + 276	i386	set_mempolicy		sys_set_mempolicy
++ + 277	i386	mq_open			sys_mq_open			compat_sys_mq_open
++ + 278	i386	mq_unlink		sys_mq_unlink
++ + 279	i386	mq_timedsend		sys_mq_timedsend		compat_sys_mq_timedsend
++ + 280	i386	mq_timedreceive		sys_mq_timedreceive		compat_sys_mq_timedreceive
++ + 281	i386	mq_notify		sys_mq_notify			compat_sys_mq_notify
++ + 282	i386	mq_getsetattr		sys_mq_getsetattr		compat_sys_mq_getsetattr
++ + 283	i386	kexec_load		sys_kexec_load			compat_sys_kexec_load
++ + 284	i386	waitid			sys_waitid			compat_sys_waitid
++ + # 285 sys_setaltroot
++ + 286	i386	add_key			sys_add_key
++ + 287	i386	request_key		sys_request_key
++ + 288	i386	keyctl			sys_keyctl
++ + 289	i386	ioprio_set		sys_ioprio_set
++ + 290	i386	ioprio_get		sys_ioprio_get
++ + 291	i386	inotify_init		sys_inotify_init
++ + 292	i386	inotify_add_watch	sys_inotify_add_watch
++ + 293	i386	inotify_rm_watch	sys_inotify_rm_watch
++ + 294	i386	migrate_pages		sys_migrate_pages
++ + 295	i386	openat			sys_openat			compat_sys_openat
++ + 296	i386	mkdirat			sys_mkdirat
++ + 297	i386	mknodat			sys_mknodat
++ + 298	i386	fchownat		sys_fchownat
++ + 299	i386	futimesat		sys_futimesat			compat_sys_futimesat
++ + 300	i386	fstatat64		sys_fstatat64			sys32_fstatat
++ + 301	i386	unlinkat		sys_unlinkat
++ + 302	i386	renameat		sys_renameat
++ + 303	i386	linkat			sys_linkat
++ + 304	i386	symlinkat		sys_symlinkat
++ + 305	i386	readlinkat		sys_readlinkat
++ + 306	i386	fchmodat		sys_fchmodat
++ + 307	i386	faccessat		sys_faccessat
++ + 308	i386	pselect6		sys_pselect6			compat_sys_pselect6
++ + 309	i386	ppoll			sys_ppoll			compat_sys_ppoll
++ + 310	i386	unshare			sys_unshare
++ + 311	i386	set_robust_list		sys_set_robust_list		compat_sys_set_robust_list
++ + 312	i386	get_robust_list		sys_get_robust_list		compat_sys_get_robust_list
++ + 313	i386	splice			sys_splice
++ + 314	i386	sync_file_range		sys_sync_file_range		sys32_sync_file_range
++ + 315	i386	tee			sys_tee
++ + 316	i386	vmsplice		sys_vmsplice			compat_sys_vmsplice
++ + 317	i386	move_pages		sys_move_pages			compat_sys_move_pages
++ + 318	i386	getcpu			sys_getcpu
++ + 319	i386	epoll_pwait		sys_epoll_pwait
++ + 320	i386	utimensat		sys_utimensat			compat_sys_utimensat
++ + 321	i386	signalfd		sys_signalfd			compat_sys_signalfd
++ + 322	i386	timerfd_create		sys_timerfd_create
++ + 323	i386	eventfd			sys_eventfd
++ + 324	i386	fallocate		sys_fallocate			sys32_fallocate
++ + 325	i386	timerfd_settime		sys_timerfd_settime		compat_sys_timerfd_settime
++ + 326	i386	timerfd_gettime		sys_timerfd_gettime		compat_sys_timerfd_gettime
++ + 327	i386	signalfd4		sys_signalfd4			compat_sys_signalfd4
++ + 328	i386	eventfd2		sys_eventfd2
++ + 329	i386	epoll_create1		sys_epoll_create1
++ + 330	i386	dup3			sys_dup3
++ + 331	i386	pipe2			sys_pipe2
++ + 332	i386	inotify_init1		sys_inotify_init1
++ + 333	i386	preadv			sys_preadv			compat_sys_preadv
++ + 334	i386	pwritev			sys_pwritev			compat_sys_pwritev
++ + 335	i386	rt_tgsigqueueinfo	sys_rt_tgsigqueueinfo		compat_sys_rt_tgsigqueueinfo
++ + 336	i386	perf_event_open		sys_perf_event_open
++ + 337	i386	recvmmsg		sys_recvmmsg			compat_sys_recvmmsg
++ + 338	i386	fanotify_init		sys_fanotify_init
++ + 339	i386	fanotify_mark		sys_fanotify_mark		compat_sys_fanotify_mark
++ + 340	i386	prlimit64		sys_prlimit64
++ + 341	i386	name_to_handle_at	sys_name_to_handle_at
++ + 342	i386	open_by_handle_at	sys_open_by_handle_at		compat_sys_open_by_handle_at
++ + 343	i386	clock_adjtime		sys_clock_adjtime		compat_sys_clock_adjtime
++ + 344	i386	syncfs			sys_syncfs
++ + 345	i386	sendmmsg		sys_sendmmsg			compat_sys_sendmmsg
++ + 346	i386	setns			sys_setns
++ + 347	i386	process_vm_readv	sys_process_vm_readv		compat_sys_process_vm_readv
++ + 348	i386	process_vm_writev	sys_process_vm_writev		compat_sys_process_vm_writev
++ + 349	i386	kcmp			sys_kcmp
++ + 350	i386	finit_module		sys_finit_module
++ + 351	i386	enqueue421		sys_enqueue421
++ + 352	i386	dequeue421		sys_dequeue421
++ + 353	i386	peekLen421		sys_peekLen421
++ + 354	i386	queueLen421		sys_queueLen421
++ + 355	i386	clearQueue421		sys_clearQueue421
++ \ No newline at end of file
++ diff -rcP -X ignorelist.txt linux-3.12.9/driver/src/Makefile project1/driver/src/Makefile
++ *** linux-3.12.9/driver/src/Makefile	1969-12-31 19:00:00.000000000 -0500
++ --- project1/driver/src/Makefile	2017-11-07 14:40:43.625930443 -0500
++ ***************
++ *** 0 ****
++ --- 1,1440 ----
++ + VERSION = 3
++ + PATCHLEVEL = 12
++ + SUBLEVEL = 9
++ + EXTRAVERSION = -ru14618-cs421project1
++ + NAME = One Giant Leap for Frogkind
++ + 
++ + # *DOCUMENTATION*
++ + # To see a list of typical targets execute "make help"
++ + # More info can be located in ./README
++ + # Comments in this file are targeted only to the developer, do not
++ + # expect to learn how to build the kernel reading this file.
++ + 
++ + # Do not:
++ + # o  use make's built-in rules and variables
++ + #    (this increases performance and avoids hard-to-debug behaviour);
++ + # o  print "Entering directory ...";
++ + MAKEFLAGS += -rR --no-print-directory
++ + 
++ + # Avoid funny character set dependencies
++ + unexport LC_ALL
++ + LC_COLLATE=C
++ + LC_NUMERIC=C
++ + export LC_COLLATE LC_NUMERIC
++ + 
++ + # We are using a recursive build, so we need to do a little thinking
++ + # to get the ordering right.
++ + #
++ + # Most importantly: sub-Makefiles should only ever modify files in
++ + # their own directory. If in some directory we have a dependency on
++ + # a file in another dir (which doesn't happen often, but it's often
++ + # unavoidable when linking the built-in.o targets which finally
++ + # turn into vmlinux), we will call a sub make in that other dir, and
++ + # after that we are sure that everything which is in that other dir
++ + # is now up to date.
++ + #
++ + # The only cases where we need to modify files which have global
++ + # effects are thus separated out and done before the recursive
++ + # descending is started. They are now explicitly listed as the
++ + # prepare rule.
++ + 
++ + # To put more focus on warnings, be less verbose as default
++ + # Use 'make V=1' to see the full commands
++ + 
++ + ifeq ("$(origin V)", "command line")
++ +   KBUILD_VERBOSE = $(V)
++ + endif
++ + ifndef KBUILD_VERBOSE
++ +   KBUILD_VERBOSE = 0
++ + endif
++ + 
++ + # Call a source code checker (by default, "sparse") as part of the
++ + # C compilation.
++ + #
++ + # Use 'make C=1' to enable checking of only re-compiled files.
++ + # Use 'make C=2' to enable checking of *all* source files, regardless
++ + # of whether they are re-compiled or not.
++ + #
++ + # See the file "Documentation/sparse.txt" for more details, including
++ + # where to get the "sparse" utility.
++ + 
++ + ifeq ("$(origin C)", "command line")
++ +   KBUILD_CHECKSRC = $(C)
++ + endif
++ + ifndef KBUILD_CHECKSRC
++ +   KBUILD_CHECKSRC = 0
++ + endif
++ + 
++ + # Use make M=dir to specify directory of external module to build
++ + # Old syntax make ... SUBDIRS=$PWD is still supported
++ + # Setting the environment variable KBUILD_EXTMOD take precedence
++ + ifdef SUBDIRS
++ +   KBUILD_EXTMOD ?= $(SUBDIRS)
++ + endif
++ + 
++ + ifeq ("$(origin M)", "command line")
++ +   KBUILD_EXTMOD := $(M)
++ + endif
++ + 
++ + # kbuild supports saving output files in a separate directory.
++ + # To locate output files in a separate directory two syntaxes are supported.
++ + # In both cases the working directory must be the root of the kernel src.
++ + # 1) O=
++ + # Use "make O=dir/to/store/output/files/"
++ + #
++ + # 2) Set KBUILD_OUTPUT
++ + # Set the environment variable KBUILD_OUTPUT to point to the directory
++ + # where the output files shall be placed.
++ + # export KBUILD_OUTPUT=dir/to/store/output/files/
++ + # make
++ + #
++ + # The O= assignment takes precedence over the KBUILD_OUTPUT environment
++ + # variable.
++ + 
++ + 
++ + # KBUILD_SRC is set on invocation of make in OBJ directory
++ + # KBUILD_SRC is not intended to be used by the regular user (for now)
++ + ifeq ($(KBUILD_SRC),)
++ + 
++ + # OK, Make called in directory where kernel src resides
++ + # Do we want to locate output files in a separate directory?
++ + ifeq ("$(origin O)", "command line")
++ +   KBUILD_OUTPUT := $(O)
++ + endif
++ + 
++ + ifeq ("$(origin W)", "command line")
++ +   export KBUILD_ENABLE_EXTRA_GCC_CHECKS := $(W)
++ + endif
++ + 
++ + # That's our default target when none is given on the command line
++ + PHONY := _all
++ + _all:
++ + 
++ + # Cancel implicit rules on top Makefile
++ + $(CURDIR)/Makefile Makefile: ;
++ + 
++ + ifneq ($(KBUILD_OUTPUT),)
++ + # Invoke a second make in the output directory, passing relevant variables
++ + # check that the output directory actually exists
++ + saved-output := $(KBUILD_OUTPUT)
++ + KBUILD_OUTPUT := $(shell cd $(KBUILD_OUTPUT) && /bin/pwd)
++ + $(if $(KBUILD_OUTPUT),, \
++ +      $(error output directory "$(saved-output)" does not exist))
++ + 
++ + PHONY += $(MAKECMDGOALS) sub-make
++ + 
++ + $(filter-out _all sub-make $(CURDIR)/Makefile, $(MAKECMDGOALS)) _all: sub-make
++ + 	@:
++ + 
++ + sub-make: FORCE
++ + 	$(if $(KBUILD_VERBOSE:1=),@)$(MAKE) -C $(KBUILD_OUTPUT) \
++ + 	KBUILD_SRC=$(CURDIR) \
++ + 	KBUILD_EXTMOD="$(KBUILD_EXTMOD)" -f $(CURDIR)/Makefile \
++ + 	$(filter-out _all sub-make,$(MAKECMDGOALS))
++ + 
++ + # Leave processing to above invocation of make
++ + skip-makefile := 1
++ + endif # ifneq ($(KBUILD_OUTPUT),)
++ + endif # ifeq ($(KBUILD_SRC),)
++ + 
++ + # We process the rest of the Makefile if this is the final invocation of make
++ + ifeq ($(skip-makefile),)
++ + 
++ + # If building an external module we do not care about the all: rule
++ + # but instead _all depend on modules
++ + PHONY += all
++ + ifeq ($(KBUILD_EXTMOD),)
++ + _all: all
++ + else
++ + _all: modules
++ + endif
++ + 
++ + srctree		:= $(if $(KBUILD_SRC),$(KBUILD_SRC),$(CURDIR))
++ + objtree		:= $(CURDIR)
++ + src		:= $(srctree)
++ + obj		:= $(objtree)
++ + 
++ + VPATH		:= $(srctree)$(if $(KBUILD_EXTMOD),:$(KBUILD_EXTMOD))
++ + 
++ + export srctree objtree VPATH
++ + 
++ + 
++ + # SUBARCH tells the usermode build what the underlying arch is.  That is set
++ + # first, and if a usermode build is happening, the "ARCH=um" on the command
++ + # line overrides the setting of ARCH below.  If a native build is happening,
++ + # then ARCH is assigned, getting whatever value it gets normally, and 
++ + # SUBARCH is subsequently ignored.
++ + 
++ + SUBARCH := $(shell uname -m | sed -e s/i.86/x86/ -e s/x86_64/x86/ \
++ + 				  -e s/sun4u/sparc64/ \
++ + 				  -e s/arm.*/arm/ -e s/sa110/arm/ \
++ + 				  -e s/s390x/s390/ -e s/parisc64/parisc/ \
++ + 				  -e s/ppc.*/powerpc/ -e s/mips.*/mips/ \
++ + 				  -e s/sh[234].*/sh/ -e s/aarch64.*/arm64/ )
++ + 
++ + # Cross compiling and selecting different set of gcc/bin-utils
++ + # ---------------------------------------------------------------------------
++ + #
++ + # When performing cross compilation for other architectures ARCH shall be set
++ + # to the target architecture. (See arch/* for the possibilities).
++ + # ARCH can be set during invocation of make:
++ + # make ARCH=ia64
++ + # Another way is to have ARCH set in the environment.
++ + # The default ARCH is the host where make is executed.
++ + 
++ + # CROSS_COMPILE specify the prefix used for all executables used
++ + # during compilation. Only gcc and related bin-utils executables
++ + # are prefixed with $(CROSS_COMPILE).
++ + # CROSS_COMPILE can be set on the command line
++ + # make CROSS_COMPILE=ia64-linux-
++ + # Alternatively CROSS_COMPILE can be set in the environment.
++ + # A third alternative is to store a setting in .config so that plain
++ + # "make" in the configured kernel build directory always uses that.
++ + # Default value for CROSS_COMPILE is not to prefix executables
++ + # Note: Some architectures assign CROSS_COMPILE in their arch/*/Makefile
++ + ARCH		?= $(SUBARCH)
++ + CROSS_COMPILE	?= $(CONFIG_CROSS_COMPILE:"%"=%)
++ + 
++ + # Architecture as present in compile.h
++ + UTS_MACHINE 	:= $(ARCH)
++ + SRCARCH 	:= $(ARCH)
++ + 
++ + # Additional ARCH settings for x86
++ + ifeq ($(ARCH),i386)
++ +         SRCARCH := x86
++ + endif
++ + ifeq ($(ARCH),x86_64)
++ +         SRCARCH := x86
++ + endif
++ + 
++ + # Additional ARCH settings for sparc
++ + ifeq ($(ARCH),sparc32)
++ +        SRCARCH := sparc
++ + endif
++ + ifeq ($(ARCH),sparc64)
++ +        SRCARCH := sparc
++ + endif
++ + 
++ + # Additional ARCH settings for sh
++ + ifeq ($(ARCH),sh64)
++ +        SRCARCH := sh
++ + endif
++ + 
++ + # Additional ARCH settings for tile
++ + ifeq ($(ARCH),tilepro)
++ +        SRCARCH := tile
++ + endif
++ + ifeq ($(ARCH),tilegx)
++ +        SRCARCH := tile
++ + endif
++ + 
++ + # Where to locate arch specific headers
++ + hdr-arch  := $(SRCARCH)
++ + 
++ + KCONFIG_CONFIG	?= .config
++ + export KCONFIG_CONFIG
++ + 
++ + # SHELL used by kbuild
++ + CONFIG_SHELL := $(shell if [ -x "$$BASH" ]; then echo $$BASH; \
++ + 	  else if [ -x /bin/bash ]; then echo /bin/bash; \
++ + 	  else echo sh; fi ; fi)
++ + 
++ + HOSTCC       = gcc
++ + HOSTCXX      = g++
++ + HOSTCFLAGS   = -Wall -Wmissing-prototypes -Wstrict-prototypes -O2 -fomit-frame-pointer
++ + HOSTCXXFLAGS = -O2
++ + 
++ + # Decide whether to build built-in, modular, or both.
++ + # Normally, just do built-in.
++ + 
++ + KBUILD_MODULES :=
++ + KBUILD_BUILTIN := 1
++ + 
++ + #	If we have only "make modules", don't compile built-in objects.
++ + #	When we're building modules with modversions, we need to consider
++ + #	the built-in objects during the descend as well, in order to
++ + #	make sure the checksums are up to date before we record them.
++ + 
++ + ifeq ($(MAKECMDGOALS),modules)
++ +   KBUILD_BUILTIN := $(if $(CONFIG_MODVERSIONS),1)
++ + endif
++ + 
++ + #	If we have "make <whatever> modules", compile modules
++ + #	in addition to whatever we do anyway.
++ + #	Just "make" or "make all" shall build modules as well
++ + 
++ + ifneq ($(filter all _all modules,$(MAKECMDGOALS)),)
++ +   KBUILD_MODULES := 1
++ + endif
++ + 
++ + ifeq ($(MAKECMDGOALS),)
++ +   KBUILD_MODULES := 1
++ + endif
++ + 
++ + export KBUILD_MODULES KBUILD_BUILTIN
++ + export KBUILD_CHECKSRC KBUILD_SRC KBUILD_EXTMOD
++ + 
++ + # Beautify output
++ + # ---------------------------------------------------------------------------
++ + #
++ + # Normally, we echo the whole command before executing it. By making
++ + # that echo $($(quiet)$(cmd)), we now have the possibility to set
++ + # $(quiet) to choose other forms of output instead, e.g.
++ + #
++ + #         quiet_cmd_cc_o_c = Compiling $(RELDIR)/$@
++ + #         cmd_cc_o_c       = $(CC) $(c_flags) -c -o $@ $<
++ + #
++ + # If $(quiet) is empty, the whole command will be printed.
++ + # If it is set to "quiet_", only the short version will be printed. 
++ + # If it is set to "silent_", nothing will be printed at all, since
++ + # the variable $(silent_cmd_cc_o_c) doesn't exist.
++ + #
++ + # A simple variant is to prefix commands with $(Q) - that's useful
++ + # for commands that shall be hidden in non-verbose mode.
++ + #
++ + #	$(Q)ln $@ :<
++ + #
++ + # If KBUILD_VERBOSE equals 0 then the above command will be hidden.
++ + # If KBUILD_VERBOSE equals 1 then the above command is displayed.
++ + 
++ + ifeq ($(KBUILD_VERBOSE),1)
++ +   quiet =
++ +   Q =
++ + else
++ +   quiet=quiet_
++ +   Q = @
++ + endif
++ + 
++ + # If the user is running make -s (silent mode), suppress echoing of
++ + # commands
++ + 
++ + ifneq ($(filter s% -s%,$(MAKEFLAGS)),)
++ +   quiet=silent_
++ + endif
++ + 
++ + export quiet Q KBUILD_VERBOSE
++ + 
++ + 
++ + # Look for make include files relative to root of kernel src
++ + MAKEFLAGS += --include-dir=$(srctree)
++ + 
++ + # We need some generic definitions (do not try to remake the file).
++ + $(srctree)/scripts/Kbuild.include: ;
++ + include $(srctree)/scripts/Kbuild.include
++ + 
++ + # Make variables (CC, etc...)
++ + 
++ + AS		= $(CROSS_COMPILE)as
++ + LD		= $(CROSS_COMPILE)ld
++ + CC		= $(CROSS_COMPILE)gcc
++ + CPP		= $(CC) -E
++ + AR		= $(CROSS_COMPILE)ar
++ + NM		= $(CROSS_COMPILE)nm
++ + STRIP		= $(CROSS_COMPILE)strip
++ + OBJCOPY		= $(CROSS_COMPILE)objcopy
++ + OBJDUMP		= $(CROSS_COMPILE)objdump
++ + AWK		= awk
++ + GENKSYMS	= scripts/genksyms/genksyms
++ + INSTALLKERNEL  := installkernel
++ + DEPMOD		= /sbin/depmod
++ + PERL		= perl
++ + CHECK		= sparse
++ + 
++ + CHECKFLAGS     := -D__linux__ -Dlinux -D__STDC__ -Dunix -D__unix__ \
++ + 		  -Wbitwise -Wno-return-void $(CF)
++ + CFLAGS_MODULE   =
++ + AFLAGS_MODULE   =
++ + LDFLAGS_MODULE  =
++ + CFLAGS_KERNEL	=
++ + AFLAGS_KERNEL	=
++ + CFLAGS_GCOV	= -fprofile-arcs -ftest-coverage
++ + 
++ + 
++ + # Use USERINCLUDE when you must reference the UAPI directories only.
++ + USERINCLUDE    := \
++ + 		-I$(srctree)/arch/$(hdr-arch)/include/uapi \
++ + 		-Iarch/$(hdr-arch)/include/generated/uapi \
++ + 		-I$(srctree)/include/uapi \
++ + 		-Iinclude/generated/uapi \
++ +                 -include $(srctree)/include/linux/kconfig.h
++ + 
++ + # Use LINUXINCLUDE when you must reference the include/ directory.
++ + # Needed to be compatible with the O= option
++ + LINUXINCLUDE    := \
++ + 		-I$(srctree)/arch/$(hdr-arch)/include \
++ + 		-Iarch/$(hdr-arch)/include/generated \
++ + 		$(if $(KBUILD_SRC), -I$(srctree)/include) \
++ + 		-Iinclude \
++ + 		$(USERINCLUDE)
++ + 
++ + KBUILD_CPPFLAGS := -D__KERNEL__
++ + 
++ + KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
++ + 		   -fno-strict-aliasing -fno-common \
++ + 		   -Werror-implicit-function-declaration \
++ + 		   -Wno-format-security \
++ + 		   -fno-delete-null-pointer-checks
++ + KBUILD_AFLAGS_KERNEL :=
++ + KBUILD_CFLAGS_KERNEL :=
++ + KBUILD_AFLAGS   := -D__ASSEMBLY__
++ + KBUILD_AFLAGS_MODULE  := -DMODULE
++ + KBUILD_CFLAGS_MODULE  := -DMODULE
++ + KBUILD_LDFLAGS_MODULE := -T $(srctree)/scripts/module-common.lds
++ + 
++ + # Read KERNELRELEASE from include/config/kernel.release (if it exists)
++ + KERNELRELEASE = $(shell cat include/config/kernel.release 2> /dev/null)
++ + KERNELVERSION = $(VERSION)$(if $(PATCHLEVEL),.$(PATCHLEVEL)$(if $(SUBLEVEL),.$(SUBLEVEL)))$(EXTRAVERSION)
++ + 
++ + export VERSION PATCHLEVEL SUBLEVEL KERNELRELEASE KERNELVERSION
++ + export ARCH SRCARCH CONFIG_SHELL HOSTCC HOSTCFLAGS CROSS_COMPILE AS LD CC
++ + export CPP AR NM STRIP OBJCOPY OBJDUMP
++ + export MAKE AWK GENKSYMS INSTALLKERNEL PERL UTS_MACHINE
++ + export HOSTCXX HOSTCXXFLAGS LDFLAGS_MODULE CHECK CHECKFLAGS
++ + 
++ + export KBUILD_CPPFLAGS NOSTDINC_FLAGS LINUXINCLUDE OBJCOPYFLAGS LDFLAGS
++ + export KBUILD_CFLAGS CFLAGS_KERNEL CFLAGS_MODULE CFLAGS_GCOV
++ + export KBUILD_AFLAGS AFLAGS_KERNEL AFLAGS_MODULE
++ + export KBUILD_AFLAGS_MODULE KBUILD_CFLAGS_MODULE KBUILD_LDFLAGS_MODULE
++ + export KBUILD_AFLAGS_KERNEL KBUILD_CFLAGS_KERNEL
++ + export KBUILD_ARFLAGS
++ + 
++ + # When compiling out-of-tree modules, put MODVERDIR in the module
++ + # tree rather than in the kernel tree. The kernel tree might
++ + # even be read-only.
++ + export MODVERDIR := $(if $(KBUILD_EXTMOD),$(firstword $(KBUILD_EXTMOD))/).tmp_versions
++ + 
++ + # Files to ignore in find ... statements
++ + 
++ + RCS_FIND_IGNORE := \( -name SCCS -o -name BitKeeper -o -name .svn -o -name CVS \
++ + 		   -o -name .pc -o -name .hg -o -name .git \) -prune -o
++ + export RCS_TAR_IGNORE := --exclude SCCS --exclude BitKeeper --exclude .svn \
++ + 			 --exclude CVS --exclude .pc --exclude .hg --exclude .git
++ + 
++ + # ===========================================================================
++ + # Rules shared between *config targets and build targets
++ + 
++ + # Basic helpers built in scripts/
++ + PHONY += scripts_basic
++ + scripts_basic:
++ + 	$(Q)$(MAKE) $(build)=scripts/basic
++ + 	$(Q)rm -f .tmp_quiet_recordmcount
++ + 
++ + # To avoid any implicit rule to kick in, define an empty command.
++ + scripts/basic/%: scripts_basic ;
++ + 
++ + PHONY += outputmakefile
++ + # outputmakefile generates a Makefile in the output directory, if using a
++ + # separate output directory. This allows convenient use of make in the
++ + # output directory.
++ + outputmakefile:
++ + ifneq ($(KBUILD_SRC),)
++ + 	$(Q)ln -fsn $(srctree) source
++ + 	$(Q)$(CONFIG_SHELL) $(srctree)/scripts/mkmakefile \
++ + 	    $(srctree) $(objtree) $(VERSION) $(PATCHLEVEL)
++ + endif
++ + 
++ + # Support for using generic headers in asm-generic
++ + PHONY += asm-generic
++ + asm-generic:
++ + 	$(Q)$(MAKE) -f $(srctree)/scripts/Makefile.asm-generic \
++ + 	            src=asm obj=arch/$(SRCARCH)/include/generated/asm
++ + 	$(Q)$(MAKE) -f $(srctree)/scripts/Makefile.asm-generic \
++ + 	            src=uapi/asm obj=arch/$(SRCARCH)/include/generated/uapi/asm
++ + 
++ + # To make sure we do not include .config for any of the *config targets
++ + # catch them early, and hand them over to scripts/kconfig/Makefile
++ + # It is allowed to specify more targets when calling make, including
++ + # mixing *config targets and build targets.
++ + # For example 'make oldconfig all'.
++ + # Detect when mixed targets is specified, and make a second invocation
++ + # of make so .config is not included in this case either (for *config).
++ + 
++ + version_h := include/generated/uapi/linux/version.h
++ + 
++ + no-dot-config-targets := clean mrproper distclean \
++ + 			 cscope gtags TAGS tags help %docs check% coccicheck \
++ + 			 $(version_h) headers_% archheaders archscripts \
++ + 			 kernelversion %src-pkg
++ + 
++ + config-targets := 0
++ + mixed-targets  := 0
++ + dot-config     := 1
++ + 
++ + ifneq ($(filter $(no-dot-config-targets), $(MAKECMDGOALS)),)
++ + 	ifeq ($(filter-out $(no-dot-config-targets), $(MAKECMDGOALS)),)
++ + 		dot-config := 0
++ + 	endif
++ + endif
++ + 
++ + ifeq ($(KBUILD_EXTMOD),)
++ +         ifneq ($(filter config %config,$(MAKECMDGOALS)),)
++ +                 config-targets := 1
++ +                 ifneq ($(filter-out config %config,$(MAKECMDGOALS)),)
++ +                         mixed-targets := 1
++ +                 endif
++ +         endif
++ + endif
++ + 
++ + ifeq ($(mixed-targets),1)
++ + # ===========================================================================
++ + # We're called with mixed targets (*config and build targets).
++ + # Handle them one by one.
++ + 
++ + %:: FORCE
++ + 	$(Q)$(MAKE) -C $(srctree) KBUILD_SRC= $@
++ + 
++ + else
++ + ifeq ($(config-targets),1)
++ + # ===========================================================================
++ + # *config targets only - make sure prerequisites are updated, and descend
++ + # in scripts/kconfig to make the *config target
++ + 
++ + # Read arch specific Makefile to set KBUILD_DEFCONFIG as needed.
++ + # KBUILD_DEFCONFIG may point out an alternative default configuration
++ + # used for 'make defconfig'
++ + include $(srctree)/arch/$(SRCARCH)/Makefile
++ + export KBUILD_DEFCONFIG KBUILD_KCONFIG
++ + 
++ + config: scripts_basic outputmakefile FORCE
++ + 	$(Q)mkdir -p include/linux include/config
++ + 	$(Q)$(MAKE) $(build)=scripts/kconfig $@
++ + 
++ + %config: scripts_basic outputmakefile FORCE
++ + 	$(Q)mkdir -p include/linux include/config
++ + 	$(Q)$(MAKE) $(build)=scripts/kconfig $@
++ + 
++ + else
++ + # ===========================================================================
++ + # Build targets only - this includes vmlinux, arch specific targets, clean
++ + # targets and others. In general all targets except *config targets.
++ + 
++ + ifeq ($(KBUILD_EXTMOD),)
++ + # Additional helpers built in scripts/
++ + # Carefully list dependencies so we do not try to build scripts twice
++ + # in parallel
++ + PHONY += scripts
++ + scripts: scripts_basic include/config/auto.conf include/config/tristate.conf \
++ + 	 asm-generic
++ + 	$(Q)$(MAKE) $(build)=$(@)
++ + 
++ + # Objects we will link into vmlinux / subdirs we need to visit
++ + init-y		:= init/
++ + drivers-y	:= drivers/ sound/ firmware/
++ + net-y		:= net/
++ + libs-y		:= lib/
++ + core-y		:= usr/
++ + endif # KBUILD_EXTMOD
++ + 
++ + ifeq ($(dot-config),1)
++ + # Read in config
++ + -include include/config/auto.conf
++ + 
++ + ifeq ($(KBUILD_EXTMOD),)
++ + # Read in dependencies to all Kconfig* files, make sure to run
++ + # oldconfig if changes are detected.
++ + -include include/config/auto.conf.cmd
++ + 
++ + # To avoid any implicit rule to kick in, define an empty command
++ + $(KCONFIG_CONFIG) include/config/auto.conf.cmd: ;
++ + 
++ + # If .config is newer than include/config/auto.conf, someone tinkered
++ + # with it and forgot to run make oldconfig.
++ + # if auto.conf.cmd is missing then we are probably in a cleaned tree so
++ + # we execute the config step to be sure to catch updated Kconfig files
++ + include/config/%.conf: $(KCONFIG_CONFIG) include/config/auto.conf.cmd
++ + 	$(Q)$(MAKE) -f $(srctree)/Makefile silentoldconfig
++ + else
++ + # external modules needs include/generated/autoconf.h and include/config/auto.conf
++ + # but do not care if they are up-to-date. Use auto.conf to trigger the test
++ + PHONY += include/config/auto.conf
++ + 
++ + include/config/auto.conf:
++ + 	$(Q)test -e include/generated/autoconf.h -a -e $@ || (		\
++ + 	echo >&2;							\
++ + 	echo >&2 "  ERROR: Kernel configuration is invalid.";		\
++ + 	echo >&2 "         include/generated/autoconf.h or $@ are missing.";\
++ + 	echo >&2 "         Run 'make oldconfig && make prepare' on kernel src to fix it.";	\
++ + 	echo >&2 ;							\
++ + 	/bin/false)
++ + 
++ + endif # KBUILD_EXTMOD
++ + 
++ + else
++ + # Dummy target needed, because used as prerequisite
++ + include/config/auto.conf: ;
++ + endif # $(dot-config)
++ + 
++ + # The all: target is the default when no target is given on the
++ + # command line.
++ + # This allow a user to issue only 'make' to build a kernel including modules
++ + # Defaults to vmlinux, but the arch makefile usually adds further targets
++ + all: vmlinux
++ + 
++ + ifdef CONFIG_CC_OPTIMIZE_FOR_SIZE
++ + KBUILD_CFLAGS	+= -Os $(call cc-disable-warning,maybe-uninitialized,)
++ + else
++ + KBUILD_CFLAGS	+= -O2
++ + endif
++ + 
++ + include $(srctree)/arch/$(SRCARCH)/Makefile
++ + 
++ + ifdef CONFIG_READABLE_ASM
++ + # Disable optimizations that make assembler listings hard to read.
++ + # reorder blocks reorders the control in the function
++ + # ipa clone creates specialized cloned functions
++ + # partial inlining inlines only parts of functions
++ + KBUILD_CFLAGS += $(call cc-option,-fno-reorder-blocks,) \
++ +                  $(call cc-option,-fno-ipa-cp-clone,) \
++ +                  $(call cc-option,-fno-partial-inlining)
++ + endif
++ + 
++ + ifneq ($(CONFIG_FRAME_WARN),0)
++ + KBUILD_CFLAGS += $(call cc-option,-Wframe-larger-than=${CONFIG_FRAME_WARN})
++ + endif
++ + 
++ + # Force gcc to behave correct even for buggy distributions
++ + ifndef CONFIG_CC_STACKPROTECTOR
++ + KBUILD_CFLAGS += $(call cc-option, -fno-stack-protector)
++ + endif
++ + 
++ + # This warning generated too much noise in a regular build.
++ + # Use make W=1 to enable this warning (see scripts/Makefile.build)
++ + KBUILD_CFLAGS += $(call cc-disable-warning, unused-but-set-variable)
++ + 
++ + ifdef CONFIG_FRAME_POINTER
++ + KBUILD_CFLAGS	+= -fno-omit-frame-pointer -fno-optimize-sibling-calls
++ + else
++ + # Some targets (ARM with Thumb2, for example), can't be built with frame
++ + # pointers.  For those, we don't have FUNCTION_TRACER automatically
++ + # select FRAME_POINTER.  However, FUNCTION_TRACER adds -pg, and this is
++ + # incompatible with -fomit-frame-pointer with current GCC, so we don't use
++ + # -fomit-frame-pointer with FUNCTION_TRACER.
++ + ifndef CONFIG_FUNCTION_TRACER
++ + KBUILD_CFLAGS	+= -fomit-frame-pointer
++ + endif
++ + endif
++ + 
++ + ifdef CONFIG_DEBUG_INFO
++ + KBUILD_CFLAGS	+= -g
++ + KBUILD_AFLAGS	+= -gdwarf-2
++ + endif
++ + 
++ + ifdef CONFIG_DEBUG_INFO_REDUCED
++ + KBUILD_CFLAGS 	+= $(call cc-option, -femit-struct-debug-baseonly) \
++ + 		   $(call cc-option,-fno-var-tracking)
++ + endif
++ + 
++ + ifdef CONFIG_FUNCTION_TRACER
++ + ifdef CONFIG_HAVE_FENTRY
++ + CC_USING_FENTRY	:= $(call cc-option, -mfentry -DCC_USING_FENTRY)
++ + endif
++ + KBUILD_CFLAGS	+= -pg $(CC_USING_FENTRY)
++ + KBUILD_AFLAGS	+= $(CC_USING_FENTRY)
++ + ifdef CONFIG_DYNAMIC_FTRACE
++ + 	ifdef CONFIG_HAVE_C_RECORDMCOUNT
++ + 		BUILD_C_RECORDMCOUNT := y
++ + 		export BUILD_C_RECORDMCOUNT
++ + 	endif
++ + endif
++ + endif
++ + 
++ + # We trigger additional mismatches with less inlining
++ + ifdef CONFIG_DEBUG_SECTION_MISMATCH
++ + KBUILD_CFLAGS += $(call cc-option, -fno-inline-functions-called-once)
++ + endif
++ + 
++ + # arch Makefile may override CC so keep this after arch Makefile is included
++ + NOSTDINC_FLAGS += -nostdinc -isystem $(shell $(CC) -print-file-name=include)
++ + CHECKFLAGS     += $(NOSTDINC_FLAGS)
++ + 
++ + # warn about C99 declaration after statement
++ + KBUILD_CFLAGS += $(call cc-option,-Wdeclaration-after-statement,)
++ + 
++ + # disable pointer signed / unsigned warnings in gcc 4.0
++ + KBUILD_CFLAGS += $(call cc-disable-warning, pointer-sign)
++ + 
++ + # disable invalid "can't wrap" optimizations for signed / pointers
++ + KBUILD_CFLAGS	+= $(call cc-option,-fno-strict-overflow)
++ + 
++ + # conserve stack if available
++ + KBUILD_CFLAGS   += $(call cc-option,-fconserve-stack)
++ + 
++ + # use the deterministic mode of AR if available
++ + KBUILD_ARFLAGS := $(call ar-option,D)
++ + 
++ + # check for 'asm goto'
++ + ifeq ($(shell $(CONFIG_SHELL) $(srctree)/scripts/gcc-goto.sh $(CC)), y)
++ + 	KBUILD_CFLAGS += -DCC_HAVE_ASM_GOTO
++ + endif
++ + 
++ + # Add user supplied CPPFLAGS, AFLAGS and CFLAGS as the last assignments
++ + KBUILD_CPPFLAGS += $(KCPPFLAGS)
++ + KBUILD_AFLAGS += $(KAFLAGS)
++ + KBUILD_CFLAGS += $(KCFLAGS)
++ + 
++ + # Use --build-id when available.
++ + LDFLAGS_BUILD_ID = $(patsubst -Wl$(comma)%,%,\
++ + 			      $(call cc-ldoption, -Wl$(comma)--build-id,))
++ + KBUILD_LDFLAGS_MODULE += $(LDFLAGS_BUILD_ID)
++ + LDFLAGS_vmlinux += $(LDFLAGS_BUILD_ID)
++ + 
++ + ifeq ($(CONFIG_STRIP_ASM_SYMS),y)
++ + LDFLAGS_vmlinux	+= $(call ld-option, -X,)
++ + endif
++ + 
++ + # Default kernel image to build when no specific target is given.
++ + # KBUILD_IMAGE may be overruled on the command line or
++ + # set in the environment
++ + # Also any assignments in arch/$(ARCH)/Makefile take precedence over
++ + # this default value
++ + export KBUILD_IMAGE ?= vmlinux
++ + 
++ + #
++ + # INSTALL_PATH specifies where to place the updated kernel and system map
++ + # images. Default is /boot, but you can set it to other values
++ + export	INSTALL_PATH ?= /boot
++ + 
++ + #
++ + # INSTALL_MOD_PATH specifies a prefix to MODLIB for module directory
++ + # relocations required by build roots.  This is not defined in the
++ + # makefile but the argument can be passed to make if needed.
++ + #
++ + 
++ + MODLIB	= $(INSTALL_MOD_PATH)/lib/modules/$(KERNELRELEASE)
++ + export MODLIB
++ + 
++ + #
++ + #  INSTALL_MOD_STRIP, if defined, will cause modules to be
++ + #  stripped after they are installed.  If INSTALL_MOD_STRIP is '1', then
++ + #  the default option --strip-debug will be used.  Otherwise,
++ + #  INSTALL_MOD_STRIP value will be used as the options to the strip command.
++ + 
++ + ifdef INSTALL_MOD_STRIP
++ + ifeq ($(INSTALL_MOD_STRIP),1)
++ + mod_strip_cmd = $(STRIP) --strip-debug
++ + else
++ + mod_strip_cmd = $(STRIP) $(INSTALL_MOD_STRIP)
++ + endif # INSTALL_MOD_STRIP=1
++ + else
++ + mod_strip_cmd = true
++ + endif # INSTALL_MOD_STRIP
++ + export mod_strip_cmd
++ + 
++ + 
++ + ifdef CONFIG_MODULE_SIG_ALL
++ + MODSECKEY = ./signing_key.priv
++ + MODPUBKEY = ./signing_key.x509
++ + export MODPUBKEY
++ + mod_sign_cmd = perl $(srctree)/scripts/sign-file $(CONFIG_MODULE_SIG_HASH) $(MODSECKEY) $(MODPUBKEY)
++ + else
++ + mod_sign_cmd = true
++ + endif
++ + export mod_sign_cmd
++ + 
++ + 
++ + ifeq ($(KBUILD_EXTMOD),)
++ + core-y		+= kernel/ mm/ fs/ ipc/ security/ crypto/ block/ fifo/
++ + 
++ + vmlinux-dirs	:= $(patsubst %/,%,$(filter %/, $(init-y) $(init-m) \
++ + 		     $(core-y) $(core-m) $(drivers-y) $(drivers-m) \
++ + 		     $(net-y) $(net-m) $(libs-y) $(libs-m)))
++ + 
++ + vmlinux-alldirs	:= $(sort $(vmlinux-dirs) $(patsubst %/,%,$(filter %/, \
++ + 		     $(init-n) $(init-) \
++ + 		     $(core-n) $(core-) $(drivers-n) $(drivers-) \
++ + 		     $(net-n)  $(net-)  $(libs-n)    $(libs-))))
++ + 
++ + init-y		:= $(patsubst %/, %/built-in.o, $(init-y))
++ + core-y		:= $(patsubst %/, %/built-in.o, $(core-y))
++ + drivers-y	:= $(patsubst %/, %/built-in.o, $(drivers-y))
++ + net-y		:= $(patsubst %/, %/built-in.o, $(net-y))
++ + libs-y1		:= $(patsubst %/, %/lib.a, $(libs-y))
++ + libs-y2		:= $(patsubst %/, %/built-in.o, $(libs-y))
++ + libs-y		:= $(libs-y1) $(libs-y2)
++ + 
++ + # Externally visible symbols (used by link-vmlinux.sh)
++ + export KBUILD_VMLINUX_INIT := $(head-y) $(init-y)
++ + export KBUILD_VMLINUX_MAIN := $(core-y) $(libs-y) $(drivers-y) $(net-y)
++ + export KBUILD_LDS          := arch/$(SRCARCH)/kernel/vmlinux.lds
++ + export LDFLAGS_vmlinux
++ + # used by scripts/pacmage/Makefile
++ + export KBUILD_ALLDIRS := $(sort $(filter-out arch/%,$(vmlinux-alldirs)) arch Documentation include samples scripts tools virt)
++ + 
++ + vmlinux-deps := $(KBUILD_LDS) $(KBUILD_VMLINUX_INIT) $(KBUILD_VMLINUX_MAIN)
++ + 
++ + # Final link of vmlinux
++ +       cmd_link-vmlinux = $(CONFIG_SHELL) $< $(LD) $(LDFLAGS) $(LDFLAGS_vmlinux)
++ + quiet_cmd_link-vmlinux = LINK    $@
++ + 
++ + # Include targets which we want to
++ + # execute if the rest of the kernel build went well.
++ + vmlinux: scripts/link-vmlinux.sh $(vmlinux-deps) FORCE
++ + ifdef CONFIG_HEADERS_CHECK
++ + 	$(Q)$(MAKE) -f $(srctree)/Makefile headers_check
++ + endif
++ + ifdef CONFIG_SAMPLES
++ + 	$(Q)$(MAKE) $(build)=samples
++ + endif
++ + ifdef CONFIG_BUILD_DOCSRC
++ + 	$(Q)$(MAKE) $(build)=Documentation
++ + endif
++ + 	+$(call if_changed,link-vmlinux)
++ + 
++ + # The actual objects are generated when descending, 
++ + # make sure no implicit rule kicks in
++ + $(sort $(vmlinux-deps)): $(vmlinux-dirs) ;
++ + 
++ + # Handle descending into subdirectories listed in $(vmlinux-dirs)
++ + # Preset locale variables to speed up the build process. Limit locale
++ + # tweaks to this spot to avoid wrong language settings when running
++ + # make menuconfig etc.
++ + # Error messages still appears in the original language
++ + 
++ + PHONY += $(vmlinux-dirs)
++ + $(vmlinux-dirs): prepare scripts
++ + 	$(Q)$(MAKE) $(build)=$@
++ + 
++ + define filechk_kernel.release
++ + 	echo "$(KERNELVERSION)$$($(CONFIG_SHELL) $(srctree)/scripts/setlocalversion $(srctree))"
++ + endef
++ + 
++ + # Store (new) KERNELRELEASE string in include/config/kernel.release
++ + include/config/kernel.release: include/config/auto.conf FORCE
++ + 	$(call filechk,kernel.release)
++ + 
++ + 
++ + # Things we need to do before we recursively start building the kernel
++ + # or the modules are listed in "prepare".
++ + # A multi level approach is used. prepareN is processed before prepareN-1.
++ + # archprepare is used in arch Makefiles and when processed asm symlink,
++ + # version.h and scripts_basic is processed / created.
++ + 
++ + # Listed in dependency order
++ + PHONY += prepare archprepare prepare0 prepare1 prepare2 prepare3
++ + 
++ + # prepare3 is used to check if we are building in a separate output directory,
++ + # and if so do:
++ + # 1) Check that make has not been executed in the kernel src $(srctree)
++ + prepare3: include/config/kernel.release
++ + ifneq ($(KBUILD_SRC),)
++ + 	@$(kecho) '  Using $(srctree) as source for kernel'
++ + 	$(Q)if [ -f $(srctree)/.config -o -d $(srctree)/include/config ]; then \
++ + 		echo >&2 "  $(srctree) is not clean, please run 'make mrproper'"; \
++ + 		echo >&2 "  in the '$(srctree)' directory.";\
++ + 		/bin/false; \
++ + 	fi;
++ + endif
++ + 
++ + # prepare2 creates a makefile if using a separate output directory
++ + prepare2: prepare3 outputmakefile asm-generic
++ + 
++ + prepare1: prepare2 $(version_h) include/generated/utsrelease.h \
++ +                    include/config/auto.conf
++ + 	$(cmd_crmodverdir)
++ + 
++ + archprepare: archheaders archscripts prepare1 scripts_basic
++ + 
++ + prepare0: archprepare FORCE
++ + 	$(Q)$(MAKE) $(build)=.
++ + 
++ + # All the preparing..
++ + prepare: prepare0
++ + 
++ + # Generate some files
++ + # ---------------------------------------------------------------------------
++ + 
++ + # KERNELRELEASE can change from a few different places, meaning version.h
++ + # needs to be updated, so this check is forced on all builds
++ + 
++ + uts_len := 64
++ + define filechk_utsrelease.h
++ + 	if [ `echo -n "$(KERNELRELEASE)" | wc -c ` -gt $(uts_len) ]; then \
++ + 	  echo '"$(KERNELRELEASE)" exceeds $(uts_len) characters' >&2;    \
++ + 	  exit 1;                                                         \
++ + 	fi;                                                               \
++ + 	(echo \#define UTS_RELEASE \"$(KERNELRELEASE)\";)
++ + endef
++ + 
++ + define filechk_version.h
++ + 	(echo \#define LINUX_VERSION_CODE $(shell                         \
++ + 	expr $(VERSION) \* 65536 + 0$(PATCHLEVEL) \* 256 + 0$(SUBLEVEL)); \
++ + 	echo '#define KERNEL_VERSION(a,b,c) (((a) << 16) + ((b) << 8) + (c))';)
++ + endef
++ + 
++ + $(version_h): $(srctree)/Makefile FORCE
++ + 	$(call filechk,version.h)
++ + 
++ + include/generated/utsrelease.h: include/config/kernel.release FORCE
++ + 	$(call filechk,utsrelease.h)
++ + 
++ + PHONY += headerdep
++ + headerdep:
++ + 	$(Q)find $(srctree)/include/ -name '*.h' | xargs --max-args 1 \
++ + 	$(srctree)/scripts/headerdep.pl -I$(srctree)/include
++ + 
++ + # ---------------------------------------------------------------------------
++ + 
++ + PHONY += depend dep
++ + depend dep:
++ + 	@echo '*** Warning: make $@ is unnecessary now.'
++ + 
++ + # ---------------------------------------------------------------------------
++ + # Firmware install
++ + INSTALL_FW_PATH=$(INSTALL_MOD_PATH)/lib/firmware
++ + export INSTALL_FW_PATH
++ + 
++ + PHONY += firmware_install
++ + firmware_install: FORCE
++ + 	@mkdir -p $(objtree)/firmware
++ + 	$(Q)$(MAKE) -f $(srctree)/scripts/Makefile.fwinst obj=firmware __fw_install
++ + 
++ + # ---------------------------------------------------------------------------
++ + # Kernel headers
++ + 
++ + #Default location for installed headers
++ + export INSTALL_HDR_PATH = $(objtree)/usr
++ + 
++ + hdr-inst := -rR -f $(srctree)/scripts/Makefile.headersinst obj
++ + 
++ + # If we do an all arch process set dst to asm-$(hdr-arch)
++ + hdr-dst = $(if $(KBUILD_HEADERS), dst=include/asm-$(hdr-arch), dst=include/asm)
++ + 
++ + PHONY += archheaders
++ + archheaders:
++ + 
++ + PHONY += archscripts
++ + archscripts:
++ + 
++ + PHONY += __headers
++ + __headers: $(version_h) scripts_basic asm-generic archheaders archscripts FORCE
++ + 	$(Q)$(MAKE) $(build)=scripts build_unifdef
++ + 
++ + PHONY += headers_install_all
++ + headers_install_all:
++ + 	$(Q)$(CONFIG_SHELL) $(srctree)/scripts/headers.sh install
++ + 
++ + PHONY += headers_install
++ + headers_install: __headers
++ + 	$(if $(wildcard $(srctree)/arch/$(hdr-arch)/include/uapi/asm/Kbuild),, \
++ + 	  $(error Headers not exportable for the $(SRCARCH) architecture))
++ + 	$(Q)$(MAKE) $(hdr-inst)=include/uapi
++ + 	$(Q)$(MAKE) $(hdr-inst)=arch/$(hdr-arch)/include/uapi/asm $(hdr-dst)
++ + 
++ + PHONY += headers_check_all
++ + headers_check_all: headers_install_all
++ + 	$(Q)$(CONFIG_SHELL) $(srctree)/scripts/headers.sh check
++ + 
++ + PHONY += headers_check
++ + headers_check: headers_install
++ + 	$(Q)$(MAKE) $(hdr-inst)=include/uapi HDRCHECK=1
++ + 	$(Q)$(MAKE) $(hdr-inst)=arch/$(hdr-arch)/include/uapi/asm $(hdr-dst) HDRCHECK=1
++ + 
++ + # ---------------------------------------------------------------------------
++ + # Modules
++ + 
++ + ifdef CONFIG_MODULES
++ + 
++ + # By default, build modules as well
++ + 
++ + all: modules
++ + 
++ + #	Build modules
++ + #
++ + #	A module can be listed more than once in obj-m resulting in
++ + #	duplicate lines in modules.order files.  Those are removed
++ + #	using awk while concatenating to the final file.
++ + 
++ + PHONY += modules
++ + modules: $(vmlinux-dirs) $(if $(KBUILD_BUILTIN),vmlinux) modules.builtin
++ + 	$(Q)$(AWK) '!x[$$0]++' $(vmlinux-dirs:%=$(objtree)/%/modules.order) > $(objtree)/modules.order
++ + 	@$(kecho) '  Building modules, stage 2.';
++ + 	$(Q)$(MAKE) -f $(srctree)/scripts/Makefile.modpost
++ + 	$(Q)$(MAKE) -f $(srctree)/scripts/Makefile.fwinst obj=firmware __fw_modbuild
++ + 
++ + modules.builtin: $(vmlinux-dirs:%=%/modules.builtin)
++ + 	$(Q)$(AWK) '!x[$$0]++' $^ > $(objtree)/modules.builtin
++ + 
++ + %/modules.builtin: include/config/auto.conf
++ + 	$(Q)$(MAKE) $(modbuiltin)=$*
++ + 
++ + 
++ + # Target to prepare building external modules
++ + PHONY += modules_prepare
++ + modules_prepare: prepare scripts
++ + 
++ + # Target to install modules
++ + PHONY += modules_install
++ + modules_install: _modinst_ _modinst_post
++ + 
++ + PHONY += _modinst_
++ + _modinst_:
++ + 	@rm -rf $(MODLIB)/kernel
++ + 	@rm -f $(MODLIB)/source
++ + 	@mkdir -p $(MODLIB)/kernel
++ + 	@ln -s $(srctree) $(MODLIB)/source
++ + 	@if [ ! $(objtree) -ef  $(MODLIB)/build ]; then \
++ + 		rm -f $(MODLIB)/build ; \
++ + 		ln -s $(objtree) $(MODLIB)/build ; \
++ + 	fi
++ + 	@cp -f $(objtree)/modules.order $(MODLIB)/
++ + 	@cp -f $(objtree)/modules.builtin $(MODLIB)/
++ + 	$(Q)$(MAKE) -f $(srctree)/scripts/Makefile.modinst
++ + 
++ + # This depmod is only for convenience to give the initial
++ + # boot a modules.dep even before / is mounted read-write.  However the
++ + # boot script depmod is the master version.
++ + PHONY += _modinst_post
++ + _modinst_post: _modinst_
++ + 	$(Q)$(MAKE) -f $(srctree)/scripts/Makefile.fwinst obj=firmware __fw_modinst
++ + 	$(call cmd,depmod)
++ + 
++ + ifeq ($(CONFIG_MODULE_SIG), y)
++ + PHONY += modules_sign
++ + modules_sign:
++ + 	$(Q)$(MAKE) -f $(srctree)/scripts/Makefile.modsign
++ + endif
++ + 
++ + else # CONFIG_MODULES
++ + 
++ + # Modules not configured
++ + # ---------------------------------------------------------------------------
++ + 
++ + modules modules_install: FORCE
++ + 	@echo >&2
++ + 	@echo >&2 "The present kernel configuration has modules disabled."
++ + 	@echo >&2 "Type 'make config' and enable loadable module support."
++ + 	@echo >&2 "Then build a kernel with module support enabled."
++ + 	@echo >&2
++ + 	@exit 1
++ + 
++ + endif # CONFIG_MODULES
++ + 
++ + ###
++ + # Cleaning is done on three levels.
++ + # make clean     Delete most generated files
++ + #                Leave enough to build external modules
++ + # make mrproper  Delete the current configuration, and all generated files
++ + # make distclean Remove editor backup files, patch leftover files and the like
++ + 
++ + # Directories & files removed with 'make clean'
++ + CLEAN_DIRS  += $(MODVERDIR)
++ + 
++ + # Directories & files removed with 'make mrproper'
++ + MRPROPER_DIRS  += include/config usr/include include/generated          \
++ +                   arch/*/include/generated
++ + MRPROPER_FILES += .config .config.old .version .old_version $(version_h) \
++ + 		  Module.symvers tags TAGS cscope* GPATH GTAGS GRTAGS GSYMS \
++ + 		  signing_key.priv signing_key.x509 x509.genkey		\
++ + 		  extra_certificates signing_key.x509.keyid		\
++ + 		  signing_key.x509.signer
++ + 
++ + # clean - Delete most, but leave enough to build external modules
++ + #
++ + clean: rm-dirs  := $(CLEAN_DIRS)
++ + clean: rm-files := $(CLEAN_FILES)
++ + clean-dirs      := $(addprefix _clean_, . $(vmlinux-alldirs) Documentation samples)
++ + 
++ + PHONY += $(clean-dirs) clean archclean vmlinuxclean
++ + $(clean-dirs):
++ + 	$(Q)$(MAKE) $(clean)=$(patsubst _clean_%,%,$@)
++ + 
++ + vmlinuxclean:
++ + 	$(Q)$(CONFIG_SHELL) $(srctree)/scripts/link-vmlinux.sh clean
++ + 
++ + clean: archclean vmlinuxclean
++ + 
++ + # mrproper - Delete all generated files, including .config
++ + #
++ + mrproper: rm-dirs  := $(wildcard $(MRPROPER_DIRS))
++ + mrproper: rm-files := $(wildcard $(MRPROPER_FILES))
++ + mrproper-dirs      := $(addprefix _mrproper_,Documentation/DocBook scripts)
++ + 
++ + PHONY += $(mrproper-dirs) mrproper archmrproper
++ + $(mrproper-dirs):
++ + 	$(Q)$(MAKE) $(clean)=$(patsubst _mrproper_%,%,$@)
++ + 
++ + mrproper: clean archmrproper $(mrproper-dirs)
++ + 	$(call cmd,rmdirs)
++ + 	$(call cmd,rmfiles)
++ + 
++ + # distclean
++ + #
++ + PHONY += distclean
++ + 
++ + distclean: mrproper
++ + 	@find $(srctree) $(RCS_FIND_IGNORE) \
++ + 		\( -name '*.orig' -o -name '*.rej' -o -name '*~' \
++ + 		-o -name '*.bak' -o -name '#*#' -o -name '.*.orig' \
++ + 		-o -name '.*.rej' \
++ + 		-o -name '*%' -o -name '.*.cmd' -o -name 'core' \) \
++ + 		-type f -print | xargs rm -f
++ + 
++ + 
++ + # Packaging of the kernel to various formats
++ + # ---------------------------------------------------------------------------
++ + # rpm target kept for backward compatibility
++ + package-dir	:= $(srctree)/scripts/package
++ + 
++ + %src-pkg: FORCE
++ + 	$(Q)$(MAKE) $(build)=$(package-dir) $@
++ + %pkg: include/config/kernel.release FORCE
++ + 	$(Q)$(MAKE) $(build)=$(package-dir) $@
++ + rpm: include/config/kernel.release FORCE
++ + 	$(Q)$(MAKE) $(build)=$(package-dir) $@
++ + 
++ + 
++ + # Brief documentation of the typical targets used
++ + # ---------------------------------------------------------------------------
++ + 
++ + boards := $(wildcard $(srctree)/arch/$(SRCARCH)/configs/*_defconfig)
++ + boards := $(notdir $(boards))
++ + board-dirs := $(dir $(wildcard $(srctree)/arch/$(SRCARCH)/configs/*/*_defconfig))
++ + board-dirs := $(sort $(notdir $(board-dirs:/=)))
++ + 
++ + help:
++ + 	@echo  'Cleaning targets:'
++ + 	@echo  '  clean		  - Remove most generated files but keep the config and'
++ + 	@echo  '                    enough build support to build external modules'
++ + 	@echo  '  mrproper	  - Remove all generated files + config + various backup files'
++ + 	@echo  '  distclean	  - mrproper + remove editor backup and patch files'
++ + 	@echo  ''
++ + 	@echo  'Configuration targets:'
++ + 	@$(MAKE) -f $(srctree)/scripts/kconfig/Makefile help
++ + 	@echo  ''
++ + 	@echo  'Other generic targets:'
++ + 	@echo  '  all		  - Build all targets marked with [*]'
++ + 	@echo  '* vmlinux	  - Build the bare kernel'
++ + 	@echo  '* modules	  - Build all modules'
++ + 	@echo  '  modules_install - Install all modules to INSTALL_MOD_PATH (default: /)'
++ + 	@echo  '  firmware_install- Install all firmware to INSTALL_FW_PATH'
++ + 	@echo  '                    (default: $$(INSTALL_MOD_PATH)/lib/firmware)'
++ + 	@echo  '  dir/            - Build all files in dir and below'
++ + 	@echo  '  dir/file.[oisS] - Build specified target only'
++ + 	@echo  '  dir/file.lst    - Build specified mixed source/assembly target only'
++ + 	@echo  '                    (requires a recent binutils and recent build (System.map))'
++ + 	@echo  '  dir/file.ko     - Build module including final link'
++ + 	@echo  '  modules_prepare - Set up for building external modules'
++ + 	@echo  '  tags/TAGS	  - Generate tags file for editors'
++ + 	@echo  '  cscope	  - Generate cscope index'
++ + 	@echo  '  gtags           - Generate GNU GLOBAL index'
++ + 	@echo  '  kernelrelease	  - Output the release version string'
++ + 	@echo  '  kernelversion	  - Output the version stored in Makefile'
++ + 	@echo  '  image_name	  - Output the image name'
++ + 	@echo  '  headers_install - Install sanitised kernel headers to INSTALL_HDR_PATH'; \
++ + 	 echo  '                    (default: $(INSTALL_HDR_PATH))'; \
++ + 	 echo  ''
++ + 	@echo  'Static analysers'
++ + 	@echo  '  checkstack      - Generate a list of stack hogs'
++ + 	@echo  '  namespacecheck  - Name space analysis on compiled kernel'
++ + 	@echo  '  versioncheck    - Sanity check on version.h usage'
++ + 	@echo  '  includecheck    - Check for duplicate included header files'
++ + 	@echo  '  export_report   - List the usages of all exported symbols'
++ + 	@echo  '  headers_check   - Sanity check on exported headers'
++ + 	@echo  '  headerdep       - Detect inclusion cycles in headers'
++ + 	@$(MAKE) -f $(srctree)/scripts/Makefile.help checker-help
++ + 	@echo  ''
++ + 	@echo  'Kernel packaging:'
++ + 	@$(MAKE) $(build)=$(package-dir) help
++ + 	@echo  ''
++ + 	@echo  'Documentation targets:'
++ + 	@$(MAKE) -f $(srctree)/Documentation/DocBook/Makefile dochelp
++ + 	@echo  ''
++ + 	@echo  'Architecture specific targets ($(SRCARCH)):'
++ + 	@$(if $(archhelp),$(archhelp),\
++ + 		echo '  No architecture specific help defined for $(SRCARCH)')
++ + 	@echo  ''
++ + 	@$(if $(boards), \
++ + 		$(foreach b, $(boards), \
++ + 		printf "  %-24s - Build for %s\\n" $(b) $(subst _defconfig,,$(b));) \
++ + 		echo '')
++ + 	@$(if $(board-dirs), \
++ + 		$(foreach b, $(board-dirs), \
++ + 		printf "  %-16s - Show %s-specific targets\\n" help-$(b) $(b);) \
++ + 		printf "  %-16s - Show all of the above\\n" help-boards; \
++ + 		echo '')
++ + 
++ + 	@echo  '  make V=0|1 [targets] 0 => quiet build (default), 1 => verbose build'
++ + 	@echo  '  make V=2   [targets] 2 => give reason for rebuild of target'
++ + 	@echo  '  make O=dir [targets] Locate all output files in "dir", including .config'
++ + 	@echo  '  make C=1   [targets] Check all c source with $$CHECK (sparse by default)'
++ + 	@echo  '  make C=2   [targets] Force check of all c source with $$CHECK'
++ + 	@echo  '  make RECORDMCOUNT_WARN=1 [targets] Warn about ignored mcount sections'
++ + 	@echo  '  make W=n   [targets] Enable extra gcc checks, n=1,2,3 where'
++ + 	@echo  '		1: warnings which may be relevant and do not occur too often'
++ + 	@echo  '		2: warnings which occur quite often but may still be relevant'
++ + 	@echo  '		3: more obscure warnings, can most likely be ignored'
++ + 	@echo  '		Multiple levels can be combined with W=12 or W=123'
++ + 	@echo  ''
++ + 	@echo  'Execute "make" or "make all" to build all targets marked with [*] '
++ + 	@echo  'For further info see the ./README file'
++ + 
++ + 
++ + help-board-dirs := $(addprefix help-,$(board-dirs))
++ + 
++ + help-boards: $(help-board-dirs)
++ + 
++ + boards-per-dir = $(notdir $(wildcard $(srctree)/arch/$(SRCARCH)/configs/$*/*_defconfig))
++ + 
++ + $(help-board-dirs): help-%:
++ + 	@echo  'Architecture specific targets ($(SRCARCH) $*):'
++ + 	@$(if $(boards-per-dir), \
++ + 		$(foreach b, $(boards-per-dir), \
++ + 		printf "  %-24s - Build for %s\\n" $*/$(b) $(subst _defconfig,,$(b));) \
++ + 		echo '')
++ + 
++ + 
++ + # Documentation targets
++ + # ---------------------------------------------------------------------------
++ + %docs: scripts_basic FORCE
++ + 	$(Q)$(MAKE) $(build)=scripts build_docproc
++ + 	$(Q)$(MAKE) $(build)=Documentation/DocBook $@
++ + 
++ + else # KBUILD_EXTMOD
++ + 
++ + ###
++ + # External module support.
++ + # When building external modules the kernel used as basis is considered
++ + # read-only, and no consistency checks are made and the make
++ + # system is not used on the basis kernel. If updates are required
++ + # in the basis kernel ordinary make commands (without M=...) must
++ + # be used.
++ + #
++ + # The following are the only valid targets when building external
++ + # modules.
++ + # make M=dir clean     Delete all automatically generated files
++ + # make M=dir modules   Make all modules in specified dir
++ + # make M=dir	       Same as 'make M=dir modules'
++ + # make M=dir modules_install
++ + #                      Install the modules built in the module directory
++ + #                      Assumes install directory is already created
++ + 
++ + # We are always building modules
++ + KBUILD_MODULES := 1
++ + PHONY += crmodverdir
++ + crmodverdir:
++ + 	$(cmd_crmodverdir)
++ + 
++ + PHONY += $(objtree)/Module.symvers
++ + $(objtree)/Module.symvers:
++ + 	@test -e $(objtree)/Module.symvers || ( \
++ + 	echo; \
++ + 	echo "  WARNING: Symbol version dump $(objtree)/Module.symvers"; \
++ + 	echo "           is missing; modules will have no dependencies and modversions."; \
++ + 	echo )
++ + 
++ + module-dirs := $(addprefix _module_,$(KBUILD_EXTMOD))
++ + PHONY += $(module-dirs) modules
++ + $(module-dirs): crmodverdir $(objtree)/Module.symvers
++ + 	$(Q)$(MAKE) $(build)=$(patsubst _module_%,%,$@)
++ + 
++ + modules: $(module-dirs)
++ + 	@$(kecho) '  Building modules, stage 2.';
++ + 	$(Q)$(MAKE) -f $(srctree)/scripts/Makefile.modpost
++ + 
++ + PHONY += modules_install
++ + modules_install: _emodinst_ _emodinst_post
++ + 
++ + install-dir := $(if $(INSTALL_MOD_DIR),$(INSTALL_MOD_DIR),extra)
++ + PHONY += _emodinst_
++ + _emodinst_:
++ + 	$(Q)mkdir -p $(MODLIB)/$(install-dir)
++ + 	$(Q)$(MAKE) -f $(srctree)/scripts/Makefile.modinst
++ + 
++ + PHONY += _emodinst_post
++ + _emodinst_post: _emodinst_
++ + 	$(call cmd,depmod)
++ + 
++ + clean-dirs := $(addprefix _clean_,$(KBUILD_EXTMOD))
++ + 
++ + PHONY += $(clean-dirs) clean
++ + $(clean-dirs):
++ + 	$(Q)$(MAKE) $(clean)=$(patsubst _clean_%,%,$@)
++ + 
++ + clean:	rm-dirs := $(MODVERDIR)
++ + clean: rm-files := $(KBUILD_EXTMOD)/Module.symvers
++ + 
++ + help:
++ + 	@echo  '  Building external modules.'
++ + 	@echo  '  Syntax: make -C path/to/kernel/src M=$$PWD target'
++ + 	@echo  ''
++ + 	@echo  '  modules         - default target, build the module(s)'
++ + 	@echo  '  modules_install - install the module'
++ + 	@echo  '  clean           - remove generated files in module directory only'
++ + 	@echo  ''
++ + 
++ + # Dummies...
++ + PHONY += prepare scripts
++ + prepare: ;
++ + scripts: ;
++ + endif # KBUILD_EXTMOD
++ + 
++ + clean: $(clean-dirs)
++ + 	$(call cmd,rmdirs)
++ + 	$(call cmd,rmfiles)
++ + 	@find $(if $(KBUILD_EXTMOD), $(KBUILD_EXTMOD), .) $(RCS_FIND_IGNORE) \
++ + 		\( -name '*.[oas]' -o -name '*.ko' -o -name '.*.cmd' \
++ + 		-o -name '*.ko.*' \
++ + 		-o -name '.*.d' -o -name '.*.tmp' -o -name '*.mod.c' \
++ + 		-o -name '*.symtypes' -o -name 'modules.order' \
++ + 		-o -name modules.builtin -o -name '.tmp_*.o.*' \
++ + 		-o -name '*.gcno' \) -type f -print | xargs rm -f
++ + 
++ + # Generate tags for editors
++ + # ---------------------------------------------------------------------------
++ + quiet_cmd_tags = GEN     $@
++ +       cmd_tags = $(CONFIG_SHELL) $(srctree)/scripts/tags.sh $@
++ + 
++ + tags TAGS cscope gtags: FORCE
++ + 	$(call cmd,tags)
++ + 
++ + # Scripts to check various things for consistency
++ + # ---------------------------------------------------------------------------
++ + 
++ + PHONY += includecheck versioncheck coccicheck namespacecheck export_report
++ + 
++ + includecheck:
++ + 	find $(srctree)/* $(RCS_FIND_IGNORE) \
++ + 		-name '*.[hcS]' -type f -print | sort \
++ + 		| xargs $(PERL) -w $(srctree)/scripts/checkincludes.pl
++ + 
++ + versioncheck:
++ + 	find $(srctree)/* $(RCS_FIND_IGNORE) \
++ + 		-name '*.[hcS]' -type f -print | sort \
++ + 		| xargs $(PERL) -w $(srctree)/scripts/checkversion.pl
++ + 
++ + coccicheck:
++ + 	$(Q)$(CONFIG_SHELL) $(srctree)/scripts/$@
++ + 
++ + namespacecheck:
++ + 	$(PERL) $(srctree)/scripts/namespace.pl
++ + 
++ + export_report:
++ + 	$(PERL) $(srctree)/scripts/export_report.pl
++ + 
++ + endif #ifeq ($(config-targets),1)
++ + endif #ifeq ($(mixed-targets),1)
++ + 
++ + PHONY += checkstack kernelrelease kernelversion image_name
++ + 
++ + # UML needs a little special treatment here.  It wants to use the host
++ + # toolchain, so needs $(SUBARCH) passed to checkstack.pl.  Everyone
++ + # else wants $(ARCH), including people doing cross-builds, which means
++ + # that $(SUBARCH) doesn't work here.
++ + ifeq ($(ARCH), um)
++ + CHECKSTACK_ARCH := $(SUBARCH)
++ + else
++ + CHECKSTACK_ARCH := $(ARCH)
++ + endif
++ + checkstack:
++ + 	$(OBJDUMP) -d vmlinux $$(find . -name '*.ko') | \
++ + 	$(PERL) $(src)/scripts/checkstack.pl $(CHECKSTACK_ARCH)
++ + 
++ + kernelrelease:
++ + 	@echo "$(KERNELVERSION)$$($(CONFIG_SHELL) $(srctree)/scripts/setlocalversion $(srctree))"
++ + 
++ + kernelversion:
++ + 	@echo $(KERNELVERSION)
++ + 
++ + image_name:
++ + 	@echo $(KBUILD_IMAGE)
++ + 
++ + # Clear a bunch of variables before executing the submake
++ + tools/: FORCE
++ + 	$(Q)mkdir -p $(objtree)/tools
++ + 	$(Q)$(MAKE) LDFLAGS= MAKEFLAGS="$(filter --j% -j,$(MAKEFLAGS))" O=$(objtree) subdir=tools -C $(src)/tools/
++ + 
++ + tools/%: FORCE
++ + 	$(Q)mkdir -p $(objtree)/tools
++ + 	$(Q)$(MAKE) LDFLAGS= MAKEFLAGS="$(filter --j% -j,$(MAKEFLAGS))" O=$(objtree) subdir=tools -C $(src)/tools/ $*
++ + 
++ + # Single targets
++ + # ---------------------------------------------------------------------------
++ + # Single targets are compatible with:
++ + # - build with mixed source and output
++ + # - build with separate output dir 'make O=...'
++ + # - external modules
++ + #
++ + #  target-dir => where to store outputfile
++ + #  build-dir  => directory in kernel source tree to use
++ + 
++ + ifeq ($(KBUILD_EXTMOD),)
++ +         build-dir  = $(patsubst %/,%,$(dir $@))
++ +         target-dir = $(dir $@)
++ + else
++ +         zap-slash=$(filter-out .,$(patsubst %/,%,$(dir $@)))
++ +         build-dir  = $(KBUILD_EXTMOD)$(if $(zap-slash),/$(zap-slash))
++ +         target-dir = $(if $(KBUILD_EXTMOD),$(dir $<),$(dir $@))
++ + endif
++ + 
++ + %.s: %.c prepare scripts FORCE
++ + 	$(Q)$(MAKE) $(build)=$(build-dir) $(target-dir)$(notdir $@)
++ + %.i: %.c prepare scripts FORCE
++ + 	$(Q)$(MAKE) $(build)=$(build-dir) $(target-dir)$(notdir $@)
++ + %.o: %.c prepare scripts FORCE
++ + 	$(Q)$(MAKE) $(build)=$(build-dir) $(target-dir)$(notdir $@)
++ + %.lst: %.c prepare scripts FORCE
++ + 	$(Q)$(MAKE) $(build)=$(build-dir) $(target-dir)$(notdir $@)
++ + %.s: %.S prepare scripts FORCE
++ + 	$(Q)$(MAKE) $(build)=$(build-dir) $(target-dir)$(notdir $@)
++ + %.o: %.S prepare scripts FORCE
++ + 	$(Q)$(MAKE) $(build)=$(build-dir) $(target-dir)$(notdir $@)
++ + %.symtypes: %.c prepare scripts FORCE
++ + 	$(Q)$(MAKE) $(build)=$(build-dir) $(target-dir)$(notdir $@)
++ + 
++ + # Modules
++ + /: prepare scripts FORCE
++ + 	$(cmd_crmodverdir)
++ + 	$(Q)$(MAKE) KBUILD_MODULES=$(if $(CONFIG_MODULES),1) \
++ + 	$(build)=$(build-dir)
++ + %/: prepare scripts FORCE
++ + 	$(cmd_crmodverdir)
++ + 	$(Q)$(MAKE) KBUILD_MODULES=$(if $(CONFIG_MODULES),1) \
++ + 	$(build)=$(build-dir)
++ + %.ko: prepare scripts FORCE
++ + 	$(cmd_crmodverdir)
++ + 	$(Q)$(MAKE) KBUILD_MODULES=$(if $(CONFIG_MODULES),1)   \
++ + 	$(build)=$(build-dir) $(@:.ko=.o)
++ + 	$(Q)$(MAKE) -f $(srctree)/scripts/Makefile.modpost
++ + 
++ + # FIXME Should go into a make.lib or something 
++ + # ===========================================================================
++ + 
++ + quiet_cmd_rmdirs = $(if $(wildcard $(rm-dirs)),CLEAN   $(wildcard $(rm-dirs)))
++ +       cmd_rmdirs = rm -rf $(rm-dirs)
++ + 
++ + quiet_cmd_rmfiles = $(if $(wildcard $(rm-files)),CLEAN   $(wildcard $(rm-files)))
++ +       cmd_rmfiles = rm -f $(rm-files)
++ + 
++ + # Run depmod only if we have System.map and depmod is executable
++ + quiet_cmd_depmod = DEPMOD  $(KERNELRELEASE)
++ +       cmd_depmod = $(CONFIG_SHELL) $(srctree)/scripts/depmod.sh $(DEPMOD) \
++ +                    $(KERNELRELEASE) "$(patsubst y,_,$(CONFIG_HAVE_UNDERSCORE_SYMBOL_PREFIX))"
++ + 
++ + # Create temporary dir for module support files
++ + # clean it up only when building all modules
++ + cmd_crmodverdir = $(Q)mkdir -p $(MODVERDIR) \
++ +                   $(if $(KBUILD_MODULES),; rm -f $(MODVERDIR)/*)
++ + 
++ + # read all saved command lines
++ + 
++ + targets := $(wildcard $(sort $(targets)))
++ + cmd_files := $(wildcard .*.cmd $(foreach f,$(targets),$(dir $(f)).$(notdir $(f)).cmd))
++ + 
++ + ifneq ($(cmd_files),)
++ +   $(cmd_files): ;	# Do not try to update included dependency files
++ +   include $(cmd_files)
++ + endif
++ + 
++ + # Shorthand for $(Q)$(MAKE) -f scripts/Makefile.clean obj=dir
++ + # Usage:
++ + # $(Q)$(MAKE) $(clean)=dir
++ + clean := -f $(if $(KBUILD_SRC),$(srctree)/)scripts/Makefile.clean obj
++ + 
++ + endif	# skip-makefile
++ + 
++ + PHONY += FORCE
++ + FORCE:
++ + 
++ + # Declare the contents of the .PHONY variable as phony.  We keep that
++ + # information in a variable so we can use it in if_changed and friends.
++ + .PHONY: $(PHONY)
++ Binary files linux-3.12.9/driver/test and project1/driver/test differ
++ diff -rcP -X ignorelist.txt linux-3.12.9/driver/test.c project1/driver/test.c
++ *** linux-3.12.9/driver/test.c	1969-12-31 19:00:00.000000000 -0500
++ --- project1/driver/test.c	2017-11-08 02:29:10.962209526 -0500
++ ***************
++ *** 0 ****
++ --- 1,245 ----
++ + #define _GNU_SOURCE
++ + 
++ + #include <stdio.h>
++ + #include <unistd.h>
++ + #include <linux/kernel.h>
++ + #include <sys/syscall.h>
++ + #include <string.h>
++ + #include <errno.h>
++ + 
++ + #define __NR_enqueue421 351
++ + #define __NR_dequeue421 352
++ + #define __NR_peekLen421 353
++ + #define __NR_queueLen421 354
++ + #define __NR_clearQueue421 355
++ + 
++ + #define MSGS 8
++ + 
++ + /* FUNCTIONS COPIED FROM PARK'S TEST_FIFO.C FOR EASE OF PRINTING INFORMATION */
++ + long enqueue421(void *data, long len) {
++ +     long val;
++ + 
++ +     printf("  enqueue421(data=%p (\"%.*s\"), len=%d): returned ", data, len, data, len);
++ +     fflush(stdout);
++ +     val = syscall(__NR_enqueue421, data, len);
++ +     printf("%d", val);
++ +     fflush(stdout);
++ +     if (val < 0)
++ + 	   perror("; ERR:");
++ +     else
++ + 	   printf("\n");
++ +     return val;
++ + }
++ + 
++ + long dequeue421(void *data, long len) {
++ +     long val;
++ + 
++ +     printf("  dequeue421(data=%p, len=%d): returned ", data, len);
++ +     fflush(stdout);
++ +     val = syscall(__NR_dequeue421, data, len);
++ +     printf("%d", val);
++ +     fflush(stdout);
++ +     if (val < 0)
++ + 	   perror("; ERR:");
++ +     else
++ + 	   printf("\n");
++ +     return val;
++ + }
++ + 
++ + long peekLen421() {
++ +     long val;
++ + 
++ +     printf("  peekLen421(): returned ");
++ +     fflush(stdout);
++ +     val = syscall(__NR_peekLen421);
++ +     printf("%d", val);
++ +     fflush(stdout);
++ +     if (val < 0)
++ + 	   perror("; ERR:");
++ +     else
++ + 	   printf("\n");
++ +     return val;
++ + }
++ + 
++ + long queueLen421() {
++ +     long val;
++ + 
++ +     printf("  queueLen421(): returned ");
++ +     fflush(stdout);
++ +     val = syscall(__NR_queueLen421);
++ +     printf("%d", val);
++ +     fflush(stdout);
++ +     if (val < 0)
++ + 	   perror("; ERR:");
++ +     else
++ + 	   printf("\n");
++ +     return val;
++ + }
++ + 
++ + long clearQueue421() {
++ +     long val;
++ + 
++ +     printf("  clearQueue421(): returned ");
++ +     fflush(stdout);
++ +     val = syscall(__NR_clearQueue421);
++ +     printf("%d", val);
++ +     fflush(stdout);
++ +     if (val < 0)
++ + 	   perror("; ERR:");
++ +     else
++ + 	   printf("\n");
++ +     return val;
++ + }
++ + 
++ + 
++ + /* BEGIN ROBUST TESTING */
++ + int main(int argc, char *argv[]) {
++ +   int test_ver;
++ + 
++ +   char wbuf[MSGS][512];
++ +   char rbuf[513];
++ +   long len;
++ +   int i;
++ + 
++ +   /* Make sure correct number of arguments inserted */
++ +   if(argc != 2) {
++ +     fprintf(stderr, "syntax: %s <valid/invalid: 0/-1>\n", argv[0]);
++ +     exit(1);
++ +   }
++ + 
++ +   printf("BEGIN TEST FILE\n");
++ +   test_ver = atoi(argv[1]); /* Determine whether to run valid input test or invalid input test */
++ + 
++ +   if(test_ver == 0) {
++ +     printf("----------- VALID INPUT TEST -----------\n\n");
++ + 
++ +     /* Add one item to queue */
++ +     printf("Round 1: Single enqueue and dequeue\n");
++ +     enqueue421("CMSC 421: Operating SystemsXXX", 27);
++ +     queueLen421();
++ +     peekLen421();
++ +     memset(rbuf, 0, sizeof(rbuf));
++ +     dequeue421(rbuf, sizeof(rbuf) - 1);
++ +     printf("  Expected \"CMSC 421: Operating Systems\"; Got \"%s\"", rbuf);
++ +     if (strcmp(rbuf, "CMSC 421: Operating Systems")) {
++ +        printf("ERROR!\n");
++ +     }
++ +     else {
++ +        printf("\n");
++ +     }
++ +     queueLen421();
++ +     clearQueue421();   
++ +     printf("  Should see error:");
++ +     peekLen421();
++ + 
++ +     printf("\nRound 2: Multiple enqueues and dequeues w/ different message sizes\n");
++ +     for(i = 0; i < MSGS; i++) {
++ +       sprintf(wbuf[i], "Ltr A%.*s", i, "BCDEFGHIJKL");
++ +       enqueue421(wbuf[i], strlen(wbuf[i]));
++ +     }
++ +     queueLen421();
++ +     for(i = 0; i < MSGS; i++) {
++ +       printf("  Should see len=%d", strlen(wbuf[i]));
++ +       len = peekLen421();
++ +       if(len != strlen(wbuf[i])) {
++ + 	printf("ERROR!\n");
++ +       }
++ +       memset(rbuf, 0, sizeof(rbuf));
++ +       dequeue421(rbuf, 512);
++ +       printf("  Expected \"%s\"; Got \"%s\"", wbuf[i], rbuf);
++ +       if (strcmp(rbuf, wbuf[i])) {
++ +         printf("ERROR!\n");
++ +       }
++ +       else {
++ +         printf("\n");
++ +       }
++ +       queueLen421();
++ +     }
++ +     printf("  Should see error:");
++ +     peekLen421();
++ + 
++ +     for(i = 0; i < 5; i++) {
++ +       enqueue421("CMSC 421 Operating Systems Project 1", 36);
++ +     }
++ +     printf("queuelen should be 5:");
++ +     queueLen421();
++ +     memset(rbuf, 0, sizeof(rbuf));
++ +     dequeue421(rbuf, 512);
++ +     clearQueue421();
++ +     printf("queuelen should be 0:");
++ +     queueLen421();
++ +     printf("dequeue should fail:");
++ +     dequeue421(rbuf, 512);
++ + 
++ +     printf("\nRound 3: Multiple enqueues and dequeues switching back and forth\n");
++ +     enqueue421("CMSC 421 Operating Systems", 27);
++ +     enqueue421("Professor: John Park", 20);
++ +     enqueue421("TA: Leslie McAdoo", 17);
++ +     printf("queuelen should be 3:");
++ +     queueLen421();
++ +     peekLen421();
++ +     memset(rbuf, 0, sizeof(rbuf));
++ +     dequeue421(rbuf, sizeof(rbuf) - 1);
++ +     memset(rbuf, 0, sizeof(rbuf));
++ +     dequeue421(rbuf, sizeof(rbuf) - 1);
++ +     printf("  Expected \"Professor: John Park\"; Got \"%s\"", rbuf);
++ +     if (strcmp(rbuf, "Professor: John Park")) {
++ +        printf("ERROR!\n");
++ +     }
++ +     else {
++ +        printf("\n");
++ +     }
++ +     printf("queuelen should be 1:");
++ +     queueLen421();
++ +     peekLen421();
++ +     enqueue421("Student: Stephanie Tam", 22);
++ +     enqueue421("Student: Veronica Clements", 26);
++ +     printf("queuelen should be 3:");
++ +     queueLen421();
++ +     clearQueue421();
++ +     printf("queuelen should be 0:");
++ +     queueLen421();
++ + 
++ +     printf("\nTests complete.\n");
++ +     printf("\n--------- END VALID INPUT TEST ---------\n");
++ +   }
++ +   else if(test_ver == -1) {
++ +     printf("---------- INVALID INPUT TEST ----------\n\n");
++ +     
++ +     printf("sys_enqueue421(): testing correct handling of errors\n");
++ +     enqueue421("len < 0 error", -1);
++ +     enqueue421("len > 512 error", 791);
++ +     enqueue421(NULL, 512);
++ +     
++ +     printf("\nsys_dequeue421(): testing correct handling of errors\n");
++ +     memset(rbuf, 0, sizeof(rbuf));
++ +     dequeue421(rbuf, -1);
++ +     
++ +     enqueue421("valid placeholder", 17);
++ +     memset(rbuf, 0, sizeof(rbuf));
++ +     dequeue421(rbuf, 5);
++ +     memset(rbuf, 0, sizeof(rbuf));
++ +     printf("  dequeue should succeed:");
++ +     dequeue421(rbuf, 512);
++ +     memset(rbuf, 0, sizeof(rbuf));
++ +     printf("  queuelen should be 0-->dequeue should fail:");
++ +     dequeue421(rbuf, 512);
++ + 
++ +     printf("\nsys_peekLen421(): testing correct handling of errors\n");
++ +     /* This section before peekLen421() should get queuelen = 0 */
++ + 
++ +     printf("  queuelen should be 0:");
++ +     queueLen421();
++ +     printf("  peeklen should fail:");
++ +     peekLen421();
++ + 
++ +     printf("\n-------- END INVALID INPUT TEST --------\n");
++ +   }
++ +   else {
++ +     fprintf(stderr, "Invalid argument given. Should be either 0 (valid) or -1 (invalid).\n");
++ +     exit(1);
++ +   }
++ + 
++ +   printf("\nEND TEST FILE\n");
++ +   return 0;
++ + }
++ diff -rcP -X ignorelist.txt linux-3.12.9/driver/test_fifo.c project1/driver/test_fifo.c
++ *** linux-3.12.9/driver/test_fifo.c	1969-12-31 19:00:00.000000000 -0500
++ --- project1/driver/test_fifo.c	2017-11-07 00:08:07.442038241 -0500
++ ***************
++ *** 0 ****
++ --- 1,177 ----
++ + /* #define _GNU_SOURCE */
++ + 
++ + #include <stdio.h>
++ + #include <unistd.h>
++ + #include <linux/kernel.h>
++ + #include <sys/syscall.h>
++ + #include <string.h>
++ + #include <errno.h>
++ + 
++ + #define __NR_enqueue421		351
++ + #define __NR_dequeue421		352
++ + #define __NR_peekLen421		353
++ + #define __NR_queueLen421	354
++ + #define __NR_clearQueue421	355
++ + 
++ + #define RND2_RNDS	5
++ + 
++ + 
++ + long enqueue421(void *data, long len) {
++ +     long val;
++ + 
++ +     printf("enqueue421(data=%p (\"%.*s\"), len=%d): returned ", data,
++ + 	   len, data, len);
++ +     fflush(stdout);
++ +     val = syscall(__NR_enqueue421, data, len);
++ +     printf("%d", val);
++ +     fflush(stdout);
++ +     if (val < 0)
++ + 	perror("; ERR:");
++ +     else
++ + 	printf("\n");
++ +     return val;
++ + }
++ + 
++ + long dequeue421(void *data, long len) {
++ +     long val;
++ + 
++ +     printf("dequeue421(data=%p, len=%d): returned ", data, len);
++ +     fflush(stdout);
++ +     val = syscall(__NR_dequeue421, data, len);
++ +     printf("%d", val);
++ +     fflush(stdout);
++ +     if (val < 0)
++ + 	perror("; ERR:");
++ +     else
++ + 	printf("\n");
++ +     return val;
++ + }
++ + 
++ + long peekLen421() {
++ +     long val;
++ + 
++ +     printf("peekLen421(): returned ");
++ +     fflush(stdout);
++ +     val = syscall(__NR_peekLen421);
++ +     printf("%d", val);
++ +     fflush(stdout);
++ +     if (val < 0)
++ + 	perror("; ERR:");
++ +     else
++ + 	printf("\n");
++ +     return val;
++ + }
++ + 
++ + long queueLen421() {
++ +     long val;
++ + 
++ +     printf("queueLen421(): returned ");
++ +     fflush(stdout);
++ +     val = syscall(__NR_queueLen421);
++ +     printf("%d", val);
++ +     fflush(stdout);
++ +     if (val < 0)
++ + 	perror("; ERR:");
++ +     else
++ + 	printf("\n");
++ +     return val;
++ + }
++ + 
++ + long clearQueue421() {
++ +     long val;
++ + 
++ +     printf("clearQueue421(): returned ");
++ +     fflush(stdout);
++ +     val = syscall(__NR_clearQueue421);
++ +     printf("%d", val);
++ +     fflush(stdout);
++ +     if (val < 0)
++ + 	perror("; ERR:");
++ +     else
++ + 	printf("\n");
++ +     return val;
++ + }
++ + 
++ + int main(int argc, char **argv) {
++ +     int phase;
++ +     char wbuf[RND2_RNDS][512];
++ +     char rbuf[513];
++ +     long len;
++ +     int i;
++ + 
++ +     if (argc != 2) {
++ + 	fprintf(stderr, "syntax: %s <phase#:1-4>\n", argv[0]);
++ + 	exit(1);
++ + 	
++ +     }
++ + 
++ +     phase = atoi(argv[1]);
++ + 	    
++ +     if (phase == 1) {
++ + 	printf("Phase I: Simple calls\n");
++ + 	printf("Ignore error msgs from this program--use \"dmesg\" to see kernel printfs.\n");
++ +     }
++ +     else if (phase == 2) {
++ + 	printf("Phase II: Simple calls w/parameter validation\n");
++ + 	printf("Ignore error msgs from this program--use \"dmesg\" to see kernel printfs.\n");
++ + 	printf("Verify that kernel funcs received args passed in.\n");
++ +     }
++ +     else if (phase == 3) {
++ + 	printf("Phase III: Actual FIFO421 functionality validation\n");
++ +     }
++ +     enqueue421("Hello, worldXXXXX", 12);
++ +     queueLen421();
++ +     peekLen421();
++ +     memset(rbuf, 0, sizeof(rbuf));
++ +     dequeue421(rbuf, sizeof(rbuf) - 1);
++ +     printf("  Expected \"Hello, world\"; Got \"%s\"", rbuf);
++ +     if (strcmp(rbuf, "Hello, world")) {
++ + 	printf("ERROR!\n");
++ +     } else {
++ + 	printf("\n");
++ +     }
++ +     queueLen421();
++ +     clearQueue421();
++ + 
++ +     printf("Should see error: ");
++ +     peekLen421();
++ + 
++ +     if (phase == 4) {
++ + 	printf("Round 2: Multiple enqueues, multiple dequeues\n");
++ + 	for (i = 0; i < RND2_RNDS; i++) {
++ + 	    /* Each msg will be a different size: */
++ + 	    sprintf(wbuf[i], "Msg 0%.*s", i, "1234567890");
++ + 	    enqueue421(wbuf[i], strlen(wbuf[i]));
++ + 	}
++ + 	queueLen421();
++ + 	for (i = 0; i < RND2_RNDS; i++) {
++ + 	    printf("Should see len=%d: ", strlen(wbuf[i]));
++ + 	    len = peekLen421();
++ + 	    if (len != strlen(wbuf[i])) {
++ + 		printf("ERROR!\n");
++ + 	    }
++ + 	    memset(rbuf, 0, sizeof(rbuf));
++ + 	    dequeue421(rbuf, 512);
++ + 	    printf("  Expected \"%s\"; Got \"%s\"", wbuf[i], rbuf);
++ + 	    if (strcmp(rbuf, wbuf[i])) {
++ + 		printf("ERROR!\n");
++ + 	    } else {
++ + 		printf("\n");
++ + 	    }
++ + 	    queueLen421();
++ + 	}
++ + 
++ + 	for (i = 0; i < 3; i++) {
++ + 	    enqueue421("Hello, world", 12);
++ + 	}
++ + 	printf("queuelen should be 3: ");
++ + 	queueLen421();
++ + 	clearQueue421();
++ + 	printf("queuelen should be 0: ");
++ + 	queueLen421();
++ + 	printf("dequeue should fail: ");
++ + 	dequeue421(rbuf, 512);
++ + 	printf("Tests complete\n");
++ +     }
++ +     return 0;
++ + }
++ diff -rcP -X ignorelist.txt linux-3.12.9/fifo/fifo.c project1/fifo/fifo.c
++ *** linux-3.12.9/fifo/fifo.c	1969-12-31 19:00:00.000000000 -0500
++ --- project1/fifo/fifo.c	2017-11-08 02:14:04.647559593 -0500
++ ***************
++ *** 0 ****
++ --- 1,189 ----
++ + #include <linux/kernel.h>
++ + 
++ + #include <linux/list.h>
++ + #include <linux/klist.h>
++ + #include <linux/slab.h>
++ + #include <linux/uaccess.h>
++ + #include <linux/semaphore.h>
++ + #include <linux/errno.h>
++ + 
++ + #define __user __attribute__((noderef, address_space(1)))
++ + #define MAX_MSG_LEN 512
++ + 
++ + struct msgQueue {
++ +   struct list_head list;  /* Kernel list structure */
++ +   long msgLen;            /* Keep track of message length */
++ +   char *m_message;        /* Store message */
++ + };
++ + 
++ + DEFINE_SEMAPHORE(lock);  /* Use when item could potentially be accessed and/or changed out of order */
++ + /*  lock: down(&lock); 
++ +  *  unlock: up(&lock);
++ +  */
++ + 
++ + static LIST_HEAD(myQueueList);
++ + static int queue_size = 0;
++ + 
++ + 
++ + asmlinkage long sys_enqueue421(const void __user *data, long len) {
++ +   /*  Description: Add new item to tail of queue
++ +    *  Parameters: *data (new pointer to add in)
++ +    *              len (# bytes to copy starting at data pointer)
++ +    *  Return: Success => 0
++ +    *          Error => -ENOMEM (insufficient memory to add or store item)
++ +    *                   -EFAULT (error accessing user-space pointer to copy data)
++ +    *                   -EINVAL (len < 0)
++ +    *                   -E2BIG (len > 512)
++ +    *  Other Notes: Don't modify any data in queue on any error
++ +    */
++ +   printk("SYS_ENQUEUE421() called\n");
++ + 
++ +   if(len < 0) {  /* Check if number of bytes to copy is negative */
++ +     printk("ERROR: 'len' is negative\n");
++ +     return -EINVAL;
++ +   }
++ +   if (len > MAX_MSG_LEN) {  /* Check if # of bytes to copy is greater than the allowed message size */
++ +     printk("ERROR: Length of message too long\n");
++ +     return -E2BIG;
++ +   }
++ + 
++ +   char *copied_space = kmalloc(len, GFP_KERNEL);  /* Copy bytes from user to kernel */
++ +   if(copied_space == NULL) {  /* Check if there's enough memory to add item */
++ +     printk("ERROR: Not enough memory\n");
++ +     return -ENOMEM;
++ +   }
++ +   if(access_ok(VERIFY_READ, data, len)) {  /* Check if user-space is accessible */
++ +     long from_userSpace = __copy_from_user(copied_space, data, sizeof(data));
++ +     if(from_userSpace != 0) {  /* Extra checking to ensure the space actually is accessible */
++ +       printk("ERROR: Can't access user-space\n");
++ +       return -EFAULT;
++ +     }
++ +   }
++ +     
++ +   /* Create new struct w/ data from given user-space pointer */
++ +   struct msgQueue *new_item = kmalloc(sizeof(struct msgQueue), GFP_KERNEL);
++ +   new_item->msgLen = len;
++ +   new_item->m_message = data;
++ + 
++ +   down(&lock);
++ +   list_add_tail(&(new_item->list), &myQueueList);  /* Add item to end of queue */
++ +   queue_size++;
++ +   up(&lock);
++ + 
++ +   return 0;
++ + }
++ + 
++ + asmlinkage long sys_dequeue421(void __user *data, long len) {
++ +   /*  Description: Remove item from head of queue & store data back into user-space
++ +    *  Parameters: *data (user's space to store dequeued entry)
++ +    *              len (upper limit on # bytes allocated starting at pointer data)
++ +    *  Return: Success => 0
++ +    *          Error => -ENODATA (empty queue)
++ +    *                   -EFAULT (error accessing user-space pointer to copy data)
++ +    *                   -EINVAL (len < 0)
++ +    *                   -E2BIG (space allocated not large enough to store entire message)
++ +    *  Other Notes: Don't modify any data in queue on any error.
++ +    *               If len > size of element at head of queue, copy # of bytes contained in head element & ignore any extra space
++ +    */
++ +   printk("SYS_DEQUEUE421() called\n");
++ +   struct msgQueue *temp;
++ + 
++ +   if(len < 0) {  /* Check if bytes allocated is negative */
++ +     printk("ERROR: 'len' is negative\n");
++ +     return -EINVAL;
++ +   }
++ + 
++ +   down(&lock);
++ +   temp = list_entry(myQueueList.next, struct msgQueue, list);  /* Grab first item in queue */
++ + 
++ +   if(queue_size == 0) {  /* Check if queue is empty */
++ +     printk("ERROR: Queue is empty\n");
++ +     up(&lock);
++ +     return -ENODATA;
++ +   }
++ +   up(&lock);
++ + 
++ +   if(len < temp->msgLen) {  /* Check if user tried to allocate too little space */
++ +     printk("ERROR: Not enough space to store message\n");
++ +     return -E2BIG;
++ +   }
++ +   if(len >= temp->msgLen) {  /* Sets allocated space to size of message if space is too large */
++ +     len = temp->msgLen;
++ +   }
++ +   if(access_ok(VERIFY_READ, data, len)) {  /* Check if user-space is accessible */
++ +     long to_userSpace = copy_to_user(data, (void*)(temp->m_message), len);  /* Copy data to user-space */
++ +     if(to_userSpace != 0) {  /* Extra checking to ensure the space actually is accessible */
++ +       printk("ERROR: Can't access user-space\n");
++ +       return -EFAULT;
++ +     }
++ +   }
++ + 
++ +   down(&lock);
++ +   list_del(myQueueList.next);  /* Delete entry and free allocated space */
++ +   queue_size--;  
++ +   up(&lock);
++ + 
++ +   kfree(temp);  /* Don't need to lock the free(), so not included in the lock */
++ + 
++ +   return 0;
++ + }
++ + 
++ + asmlinkage long sys_peekLen421(void) {
++ +   /*  Description: Retrieve length of element at head of queue
++ +    *  Parameters: None
++ +    *  Return: Success => size of data in element at head of queue (in bytes)
++ +    *          Error => -ENODATA (empty queue)
++ +    *  Other Notes:
++ +    */
++ +   printk("SYS_PEEKLEN421() called\n");
++ +   struct msgQueue *temp;
++ + 
++ +   down(&lock);
++ +   if(queue_size == 0) {  /* Check if queue is empty */
++ +     printk("ERROR: Queue is empty\n");
++ +     up(&lock);  /* Need to release before or else starvation can happen */
++ +     return -ENODATA;
++ +   }
++ +   
++ +   temp = list_entry(myQueueList.next, struct msgQueue, list);  /* Get first element's size, in bytes, and return it */
++ +   up(&lock);
++ + 
++ +   return temp->msgLen;
++ + }
++ + 
++ + asmlinkage long sys_queueLen421() {
++ +   /*  Description: Retrive # of elements currently in queue
++ +    *  Parameters: 
++ +    *  Return: Success => # of elements in queue
++ +    *  Other Notes:
++ +    */
++ +   printk("SYS_QUEUELEN421() called\n");
++ +   int temp_size;
++ + 
++ +   down(&lock);
++ +   temp_size = queue_size;
++ +   up(&lock);
++ + 
++ +   return temp_size;
++ + }
++ + 
++ + asmlinkage long sys_clearQueue421() {
++ +   /*  Description: Deletes all messages currently in queue, freeing all memory & releasing stored elements
++ +    *  Parameters: 
++ +    *  Return: 0 => success
++ +    *  Other Notes:
++ +    */
++ +   printk("SYS_CLEARQUEUE421() called\n");
++ +   struct msgQueue *loop_cursor, *temp_stg;  /* Create variables to keep track of spot while iterating */
++ + 
++ +   down(&lock);
++ +   /* Iterate through queue and delete then free each item */
++ +   list_for_each_entry_safe(loop_cursor, temp_stg, &myQueueList, list) {
++ +     list_del(&(loop_cursor->list));
++ +     kfree(loop_cursor);
++ +     queue_size--;  /* Be sure to keep track of queue's size */
++ +   }
++ +   up(&lock);
++ + 
++ +   return 0;
++ + }
++ diff -rcP -X ignorelist.txt linux-3.12.9/fifo/Makefile project1/fifo/Makefile
++ *** linux-3.12.9/fifo/Makefile	1969-12-31 19:00:00.000000000 -0500
++ --- project1/fifo/Makefile	2017-11-05 13:44:11.999802636 -0500
++ ***************
++ *** 0 ****
++ --- 1 ----
++ + obj-y := fifo.o
++ Binary files linux-3.12.9/hello/a.out and project1/hello/a.out differ
++ diff -rcP -X ignorelist.txt linux-3.12.9/hello/hello.c project1/hello/hello.c
++ *** linux-3.12.9/hello/hello.c	1969-12-31 19:00:00.000000000 -0500
++ --- project1/hello/hello.c	2017-11-03 23:02:20.537749983 -0400
++ ***************
++ *** 0 ****
++ --- 1,6 ----
++ + #include <linux/kernel.h>
++ + 
++ + asmlinkage long sys_hello(void) {
++ +   printk("Hello World\n");
++ +   return 0;
++ + }
++ diff -rcP -X ignorelist.txt linux-3.12.9/hello/Makefile project1/hello/Makefile
++ *** linux-3.12.9/hello/Makefile	1969-12-31 19:00:00.000000000 -0500
++ --- project1/hello/Makefile	2017-11-03 23:11:58.810012818 -0400
++ ***************
++ *** 0 ****
++ --- 1 ----
++ + obj-y := hello.o
++ diff -rcP -X ignorelist.txt linux-3.12.9/hello/test.c project1/hello/test.c
++ *** linux-3.12.9/hello/test.c	1969-12-31 19:00:00.000000000 -0500
++ --- project1/hello/test.c	2017-11-04 01:58:04.884508556 -0400
++ ***************
++ *** 0 ****
++ --- 1,15 ----
++ + #include <stdio.h>
++ + #include <unistd.h>
++ + #include <linux/kernel.h>
++ + #include <sys/syscall.h>
++ + 
++ + #define __NR_hello 351
++ + 
++ + long hello_syscall(void) {
++ +   return syscall(__NR_hello);
++ + }
++ + 
++ + int main(int argc, char *argv[]) {
++ +   hello_syscall();
++ +   return 0;
++ + }
++ diff -rcP -X ignorelist.txt linux-3.12.9/Makefile project1/Makefile
++ *** linux-3.12.9/Makefile	2014-01-25 12:18:00.000000000 -0500
++ --- project1/Makefile	2017-11-05 11:46:37.634794657 -0500
++ ***************
++ *** 1,7 ****
++   VERSION = 3
++   PATCHLEVEL = 12
++   SUBLEVEL = 9
++ ! EXTRAVERSION =
++   NAME = One Giant Leap for Frogkind
++   
++   # *DOCUMENTATION*
++ --- 1,7 ----
++   VERSION = 3
++   PATCHLEVEL = 12
++   SUBLEVEL = 9
++ ! EXTRAVERSION = -ru14618-cs421project1
++   NAME = One Giant Leap for Frogkind
++   
++   # *DOCUMENTATION*
++ ***************
++ *** 733,739 ****
++   
++   
++   ifeq ($(KBUILD_EXTMOD),)
++ ! core-y		+= kernel/ mm/ fs/ ipc/ security/ crypto/ block/
++   
++   vmlinux-dirs	:= $(patsubst %/,%,$(filter %/, $(init-y) $(init-m) \
++   		     $(core-y) $(core-m) $(drivers-y) $(drivers-m) \
++ --- 733,739 ----
++   
++   
++   ifeq ($(KBUILD_EXTMOD),)
++ ! core-y		+= kernel/ mm/ fs/ ipc/ security/ crypto/ block/ fifo/
++   
++   vmlinux-dirs	:= $(patsubst %/,%,$(filter %/, $(init-y) $(init-m) \
++   		     $(core-y) $(core-m) $(drivers-y) $(drivers-m) \
+diff -rcP -X ignorelist.txt linux-3.12.9/README.md project1/README.md
+*** linux-3.12.9/README.md	1969-12-31 19:00:00.000000000 -0500
+--- project1/README.md	2017-11-08 03:24:38.367587586 -0500
+***************
+*** 0 ****
+--- 1,75 ----
++ # Project 1
++ **Due Date: 2017 Nov. 6, 11:59PM (extension to Nov. 8)**
++ Author: Stephanie Tam
++ Email: ru14618@umbc.edu
++ 
++ ## Introduction/Objectives
++ Create a new custom kernel that contains a few new system calls. Before beginning, create a new working copy of the kernel source tree, into /usr/src/project1.
++ 
++ ### Objectives:
++ 1. Becomes familiar w/ procedure of adding a system call to x86 (32-bit) version of Linux kernel.
++ 2. Practice dynamic memory allocation in kernel space.
++ 3. Practice adequate testing of kernel-level code.
++ 4. Become familiar w/ manually calling Linux system calls from userland.
++ 
++ ## Approach
++ I decided to follow Professor Park's suggested strategy for this project. I couldn't follow it exactly, due to some initial confusion about the Part II testing, which I partially skipped. I chose this approach, not only because the professor suggested that we follow this, but also because it did make the most sense in terms of working on it incrementally and being able to fully understand what the project's purpose is.
++ 
++ Below is a more detailed description of my approach in each part/phase:
++ **Part 0:**
++ I decided to follow the suggested Project 1 strategy from Professor Park as best as I could because it seemed like the best way to approach the project. I did the "Hello World" system call exercise to familiarize myself w/ creating a system call, which I found quite helpful.
++ 
++ **Part I:**
++ I moved onto tackling the actual project. I created the necessary directories and files (fifo/fifo.c, fifo/Makefile), then I added the basic skeleton of the syscall functions with the required "#includes". Upon compiling the first time with the basics, there were no issues.
++ 
++ **Part II:**
++ I added print statements for the length and sizes. Passing in the dummy parameters were pretty simple, though I wasn't completely sure I had been doing it right. I decided to continue on with the project and implement the semantics of each function, working incrementally.
++ 
++ **Part III:**
++ When I first began, I looked at the resources provided in the project description, which are also listed below in "Resources". As I worked, these resources, in addition to a couple of other resources, were helpful in figuring out what functions I could utilize and how to implement them in my program.
++ 
++ I worked backwards, starting with the simpler calls of sys_clearQueue421(), sys_queueLen421(), and sys_peekLen421(). I tested these three to make sure that they at least ran. Next, I tackled sys_enqueue421() and sys_dequeue421(). The basic tests showed that the functions seemed to be working, but upon more in-depth testing (test_fifo.c), I had forgotten to copy the message into the new item in enqueue, so I was getting an error upon trying to grab it in dequeue.
++ 
++ In terms of writing fifo.c, I dealt with locking last. I didn't understand it fully, but with some explanation from friends, and then looking at the documentation of <linux/semaphore.h>, I understand it now. It's quite simple now to determine which items could be accessed or changed out of order and appropriately lock them so that neither race conditions nor starvation occur.
++ 
++ Lastly, I tested my program against Prof. Park's test_fifo.c file and my own test.c file. For my own test file, I made it more robust to handle both valid and invalid input. I had a separate call for the valid and invalid tests so that it is easier to see what works and what doesn't. Everything in test.c and fifo.c should be commented or contain print statements detailing intentions and what happened upon running the tests.
++ 
++ **Resources:**
++ 1. <[linux/list.h](http://elixir.free-electrons.com/linux/latest/source/include/linux/list.h)>
++ 2. [Kernel Korner: System Calls](https://www.csee.umbc.edu/courses/undergraduate/CMSC421/fall02/burt/projects/LinuxJournal_SystemCalls.html)
++ 3. [Linux Kernel API](https://www.kernel.org/doc/htmldocs/kernel-api/)
++ 4. [Unreliable Guide to Locking](https://www.kernel.org/doc/htmldocs/kernel-locking/index.html)
++ 5. [Linux Kernel Linked List Explained](https://isis.poly.edu/kulesh/stuff/src/klist/)
++ 6. [Kernel Data Structures](https://notes.shichao.io/lkd/ch6/)
++ 7. <[linux/semaphore.h](http://elixir.free-electrons.com/linux/latest/source/include/linux/semaphore.h)>
++ 
++ **NOTE: THE FILES ARE ARRANGED LIKE THE KERNEL (driver > src > files changed and added in kernel)**
++ 
++ ## Driver Programs
++ ### How to Use The Programs
++ **test.c**
++ - What It Tests
++   - Valid input
++     - Single enqueue and dequeue
++     - Multiple enqueues and dequeues (varying size and set size)
++     - Expected errors with syscalls
++   - Invalid input
++     - sys_enqueue421() errors
++     - sys_dequeue421() errors
++     - sys_peekLen421() errors
++     - _NOTE: Park specifically said that we don't need to test ENOMEM error cases_
++ 
++ - How to Test It
++   - Steps:
++     1. make test (also works with just 'make')
++     2. valid input:   ./test 0
++        invalid input: ./test -1
++ 
++ **test_fifo.c** _(Note: This is Professor Park's provided test file)_
++ - What It Tests
++   - different phases of program development
++ 
++ - How to Test It
++   - Steps:
++     1. make test_fifo
++     2. ./test_fifo <phase#:1-4> _(Example: ./test_fifo 3)_

@@ -1,0 +1,20 @@
+diff -rcP -X ignorelist.txt linux-3.12.9/Makefile project0/Makefile
+*** linux-3.12.9/Makefile	2014-01-25 12:18:00.000000000 -0500
+--- project0/Makefile	2017-09-24 22:16:33.979083391 -0400
+***************
+*** 1,7 ****
+  VERSION = 3
+  PATCHLEVEL = 12
+  SUBLEVEL = 9
+! EXTRAVERSION =
+  NAME = One Giant Leap for Frogkind
+  
+  # *DOCUMENTATION*
+--- 1,7 ----
+  VERSION = 3
+  PATCHLEVEL = 12
+  SUBLEVEL = 9
+! EXTRAVERSION = -ru14618-cs421proj0
+  NAME = One Giant Leap for Frogkind
+  
+  # *DOCUMENTATION*

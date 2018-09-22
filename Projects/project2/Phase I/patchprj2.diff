@@ -1,0 +1,2505 @@
+Binary files linux-3.12.9/disk-images/fs421_71blk.img and project2/disk-images/fs421_71blk.img differ
+Binary files linux-3.12.9/disk-images/fs421lgcontig.img and project2/disk-images/fs421lgcontig.img differ
+Binary files linux-3.12.9/disk-images/fs421lgfract.img and project2/disk-images/fs421lgfract.img differ
+Binary files linux-3.12.9/disk-images/fs421lgwithfiles.img and project2/disk-images/fs421lgwithfiles.img differ
+Binary files linux-3.12.9/disk-images/fs421smcontig.img and project2/disk-images/fs421smcontig.img differ
+Binary files linux-3.12.9/disk-images/fs421smfract.img and project2/disk-images/fs421smfract.img differ
+Binary files linux-3.12.9/disk-images/fs421smwithfiles.img and project2/disk-images/fs421smwithfiles.img differ
+Binary files linux-3.12.9/disk-images/fsck.minix and project2/disk-images/fsck.minix differ
+Binary files linux-3.12.9/disk-images/mkfs.minix and project2/disk-images/mkfs.minix differ
+diff -rcP -X ignorelist.txt linux-3.12.9/fs/fs421/bitmap.c project2/fs/fs421/bitmap.c
+*** linux-3.12.9/fs/fs421/bitmap.c	1969-12-31 19:00:00.000000000 -0500
+--- project2/fs/fs421/bitmap.c	2017-11-29 12:31:49.769475695 -0500
+***************
+*** 0 ****
+--- 1,401 ----
++ /*
++  *  linux/fs/fs421/bitmap.c
++  *
++  *  Copyright (C) 1991, 1992  Linus Torvalds
++  */
++ 
++ /*
++  * Modified for 680x0 by Hamish Macdonald
++  * Fixed for 680x0 by Andreas Schwab
++  *
++  *  Modified from minix fs for use as exercise for UMBC CMSC421 OS course
++  *      by John Y. Park
++  */
++ 
++ /* bitmap.c contains the code that handles the inode and block bitmaps */
++ 
++ /*
++  * Additional notes:
++  * The inode bitmap starts from 0, i.e., inode x is represented by bit x.
++  * However, the actual inode array starts from index 1, i.e., inode 1 is
++  * inodes[0] in the first block of inodes.
++  * Therefore, bit 0 in the inode bitmap is always set, because it doesn't
++  * correspond to any actual inode structure.  --jyp
++  */
++ 
++ 
++ #include "fs421.h"
++ #include <linux/buffer_head.h>
++ #include <linux/bitops.h>
++ #include <linux/sched.h>
++ 
++ static DEFINE_SPINLOCK(bitmap_lock);
++ 
++ /*
++  * General comments:
++  *   Bitmap consists of blocks filled with 32bit words (you can walk it as
++  *   8-bit or 16-bit "words" if desired, but note that FS421 pads to 32-bit
++  *   boundaries).  Note: bit set == busy, bit clear == free
++  */
++ 
++ /*
++  * HINT-STUB:
++  *
++  * fs421_init_zmap_offsets():  NEW FUNCTION
++  * Supplemental code to make dealing with bitmaps faster, by calculating
++  * the size of each level of the Binary Buddy bitmap, and using that to
++  * generate a precomputed cache of the offsets for each level of the
++  * bitmaps, accounting for the 32-bit word-aligned padding for each level.
++  * Note that this generates one extra "offset" value, i.e., where the
++  * "n+1-th level" would start--this lets us calculate the size of the
++  * nth level as a general case.
++  * This table of offsets is used to conveniently go directly to any
++  * desired level of the bitmap.
++  * NB: the table is in units of bits.
++  * Return: total number of bits across all the levels of BB bitmap hierarchy--
++  *   used by fs421_fill_super() at mount time to validate that the
++  *   bitmap size indicated in the superblock is of sufficient size.
++  */
++ unsigned long fs421_init_zmap_offsets(struct fs421_sb_info *sbi) {
++ 	__u32 bits = sbi->s_nzones - sbi->s_firstdatazone;
++ 	__u32 total_bits = 0;
++ 	int level = 0;
++ 
++ 	sbi->s_zmap_offset[0] = 0;
++ 	while (bits) {
++ 		total_bits += DIV_ROUND_UP(bits, 32) * 32;
++ 		sbi->s_zmap_offset[++level] = total_bits;
++ 		bits /= 2;
++ 	}
++ 	sbi->s_zmap_nlevels = level;
++ 	return total_bits;
++ }
++ 
++ /*
++  * get_bh_and_bit():  NEW FUNCTION
++  */
++ static inline void get_bh_and_bit(struct super_block *sb, int level, __u32 zchunk,
++ 			     struct buffer_head **bh, __u32 *bit) {
++ 	struct fs421_sb_info *sbi = fs421_sb(sb);
++ 	int k = sb->s_blocksize_bits + 3;
++ 
++ 	/* Calculate the absolute position of the bit we are
++ 	 * interested in, from start of entire bitmap set */
++ 	__u32 abs_bit = sbi->s_zmap_offset[level] + (zchunk >> level);
++ 	*bh = sbi->s_zmap[abs_bit >> k];
++ 	*bit = abs_bit & ((1<<k) - 1);
++ }
++ 
++ /*
++  * Tallies the number of free (zero) bits at one level of the BB bitmap set.
++  * Param "start" is the bit offset in bitmap hierarchy for requested level
++  *
++  * HINT-STUB:
++  * You should study this function very carefully--it provides a wealth
++  * of information that you can reuse in other bitmap functions,
++  * particularly how you span multiple blocks, while dealing with the
++  * Linux buffer cache.
++  */
++ static __u32 count_free(struct buffer_head *map[], unsigned blocksize,
++ 			__u32 start, __u32 num_bits)
++ {
++ 	struct buffer_head **curr_map;
++ 	__u32 bits_per_zone = 8 * blocksize;
++ 	__u32 bits_left = num_bits;
++ 	unsigned start_in_blk, bits_to_test;
++ 	unsigned words;
++ 	__u32 sum = 0;
++ 	__u16 *p;
++ 
++ 	/* Should following also test if num_bits % 32? */
++ 	if (start % 32) {
++ 		printk("Non-word-aligned bitmap start or len: %u, %u\n",
++ 		       start, num_bits);
++ 		return 0;
++ 	}
++ 
++ 	curr_map = map + start / bits_per_zone;
++ 	start_in_blk = start % bits_per_zone;
++ 
++ 	do {
++ 		bits_to_test = bits_per_zone - start_in_blk;
++ 		if (bits_to_test > bits_left) {
++ 			bits_to_test = bits_left;
++ 		}
++ 		/* Now, convert to words */
++ 		words = bits_to_test / 16;
++ 		p = (__u16 *)(*curr_map++)->b_data + start_in_blk / 16;
++ 		while (words--)
++ 			sum += 16 - hweight16(*p++);
++ 		bits_left -= bits_to_test;
++ 		start_in_blk = 0;	/* for all subsequent blocks */
++ 	} while (bits_left);
++ 
++ 	return sum;
++ }
++ 
++ /*
++  * HINT-STUB:
++  * This is a required function, which you must write most of.
++  *
++  * It receives a request to free up a chunk of the specified size
++  * (units is log2(num_blocks_to_free)) starting at the specified disk
++  * block number, and puts it back into the binary buddy bitmap.
++  * Note it must handle mapping disk block# to bitmap level and position,
++  * and then also handle coalescing.
++  *
++  * IMPORTANT: be very consistent in the units you are passing around: is it
++  * bits, bytes, words, or blocks??
++  */
++ void fs421_free_block(struct inode *inode, unsigned long block, unsigned size_log2)
++ {
++ 	struct super_block *sb = inode->i_sb;
++ 	struct fs421_sb_info *sbi = fs421_sb(sb);
++ 	struct buffer_head *bh;
++ 	__u32 zchunk, bit, bbit;
++ 	int level;
++ 
++ #ifdef NEVERDEF
++ 	CHECK THAT BLOCK IS IN LEGAL RANGE FOR DISK;
++ 
++ 	CHECK THAT BLOCK IS PROPERLY ALIGNED FOR ITS BINARY SIZE;
++ 
++ 	
++ 	spin_lock(&bitmap_lock);  /* lEAVE THIS ALONE! */
++ 
++ 	CHECK THAT BIT ISN NOT ALREADY FREE AT LEVEL;
++ 
++ 	FREE UP BIT AT LEVEL;
++ 
++ 	IMPORTANT--EVERY TIME YOU CHANGE A BIT, MUST USE FOLLOWING
++ 	    ON CONTAINING BUFFER''S buffer_head:
++ 	    mark_buffer_dirty(bh);
++ 
++ 	CHECK BUDDY FOR COALESCING;
++ 
++ 	COALESCE IF NECESSARY;
++ 
++ 	THIS MIGHT CAUSE CASCADE AT UPPER LEVELS;
++ 
++ 	spin_unlock(&bitmap_lock);  /* lEAVE THIS ALONE! */
++ #endif
++ 
++ }
++ 
++ /*
++  * HINT-STUB:
++  * This is a required function, which you must write most of.
++  *
++  * It implements the allocation side of the binary buddy allocator.
++  * It receives a request for a chunk of a specified size
++  * (units is log2(num_blocks_to_free)), and tries to allocate it from
++  * the binary buddy bitmap.
++  * Note it must handle mapping bitmap level and position to  disk block#.
++  *
++  * Return: disk-relative block# of first disk block of contiguous chunk
++  *   of size 2**size_log2,
++  *   0 on error (e.g., no more space big enough)
++  *
++  * IMPORTANT: be very consistent in the units you are working with at any
++  * given time: is it bits, bytes, words, or blocks??
++  */
++ int fs421_new_block(struct inode * inode, unsigned size_log2)
++ {
++ 	struct super_block *sb = inode->i_sb;
++ 	struct fs421_sb_info *sbi = fs421_sb(sb);
++ 	struct buffer_head *bh;
++ 	int level;
++ 	__u32 bit, zchunk;
++ 
++ #ifdef NEVERDEF
++ 	spin_lock(&bitmap_lock);
++ 
++ 	/* HINT-STUB: depending on units of "size" param, convert
++ 	 * it to log2 units--that's what "size_log2" below is.
++ 	 */
++ 	CALCULATE LEVEL BASED ON SIZE: STORE IN size_log2;
++ 
++ 	SCAN REQUESETD LEVEL;
++ 
++ 	IF NECESSARY: SCAN HIGHER LEVELS {
++ 	    IF FOUND AT HIGHER LEVEL, SPLIT INTO PIECES
++ 		BACK DOWN TO REQUESTED LEVEL;
++ 	}
++ 
++ 	MARK BIT AS USED (BIT SET);
++ 
++ 	IMPORTANT--EVERY TIME YOU CHANGE A BIT, MUST USE FOLLOWING
++ 	    ON CONTAINING BUFFER''S buffer_head:
++ 	    mark_buffer_dirty(bh);
++ 
++ 
++ 	spin_unlock(&bitmap_lock);
++ 
++ 	RETURN DISK-RELATIVE OFFSET OF CHUNK, OR 0 FOR ERROR;
++ #endif
++ 	return 0;  /* CHANGE THIS!!!! */
++ }
++ 
++ 
++ unsigned long fs421_count_free_blocks(struct super_block *sb)
++ {
++ 	__u32 sum = 0;
++ 	struct fs421_sb_info *sbi = fs421_sb(sb);
++ 	__u32 *offset = sbi->s_zmap_offset;
++ 	int i;
++ 	
++ 
++ 	for (i = 0; i < sbi->s_zmap_nlevels; i++) {
++ 		/* count_free() uses a bitcount for use on inode bitmap,
++ 		 * so keep it that way
++ 		 */
++ 		sum += count_free(sbi->s_zmap, sb->s_blocksize,
++ 				  offset[i], offset[i + 1] - offset[i])
++ 			<< i;
++ 	}
++ 
++ 	return (sum << sbi->s_log_zone_size);
++ }
++ 
++ /*
++  * Was originally "struct minix2_inode minix_V2_raw_inode()" --jyp
++  */
++ 
++ struct fs421_inode *
++ fs421_raw_inode(struct super_block *sb, ino_t ino, struct buffer_head **bh)
++ {
++ 	int block;
++ 	struct fs421_sb_info *sbi = fs421_sb(sb);
++ 	struct fs421_inode *p;
++ 	int fs421_inodes_per_block = sb->s_blocksize / sizeof(struct fs421_inode);
++ 
++ 	*bh = NULL;
++ 	if (!ino || ino > sbi->s_ninodes) {
++ 		printk("Bad inode number on dev %s: %ld is out of range\n",
++ 		       sb->s_id, (long)ino);
++ 		return NULL;
++ 	}
++ 	ino--;
++ 	block = 2 + sbi->s_imap_blocks + sbi->s_zmap_blocks +
++ 		 ino / fs421_inodes_per_block;
++ 	*bh = sb_bread(sb, block);
++ 	if (!*bh) {
++ 		printk("Unable to read inode block\n");
++ 		return NULL;
++ 	}
++ 	p = (void *)(*bh)->b_data;
++ 	return p + ino % fs421_inodes_per_block;
++ }
++ 
++ /* Clear the link count and mode of a deleted inode on disk. */
++ 
++ static void fs421_clear_inode(struct inode *inode)
++ {
++ 	struct buffer_head *bh = NULL;
++ 
++ 	/* Following was formerly V1|V2-specific */
++ 	{
++ 		struct fs421_inode *raw_inode;
++ 		raw_inode = fs421_raw_inode(inode->i_sb, inode->i_ino, &bh);
++ 		if (raw_inode) {
++ 			raw_inode->i_nlinks = 0;
++ 			raw_inode->i_mode = 0;
++ 		}
++ 	}
++ 	if (bh) {
++ 		mark_buffer_dirty(bh);
++ 		brelse (bh);
++ 	}
++ }
++ 
++ void fs421_free_inode(struct inode * inode)
++ {
++ 	struct super_block *sb = inode->i_sb;
++ 	struct fs421_sb_info *sbi = fs421_sb(inode->i_sb);
++ 	struct buffer_head *bh;
++ 	int k = sb->s_blocksize_bits + 3;
++ 	unsigned long ino, bit;
++ 
++ 	ino = inode->i_ino;
++ 	if (ino < 1 || ino > sbi->s_ninodes) {
++ 		printk("fs421_free_inode: inode 0 or nonexistent inode\n");
++ 		return;
++ 	}
++ 	bit = ino & ((1<<k) - 1);
++ 	ino >>= k;
++ 	if (ino >= sbi->s_imap_blocks) {
++ 		printk("fs421_free_inode: nonexistent imap in superblock\n");
++ 		return;
++ 	}
++ 
++ 	fs421_clear_inode(inode);	/* clear on-disk copy */
++ 
++ 	bh = sbi->s_imap[ino];
++ 	spin_lock(&bitmap_lock);
++ 	if (!__test_and_clear_bit_le(bit, bh->b_data))
++ 		printk("fs421_free_inode: bit %lu already cleared\n", bit);
++ 	spin_unlock(&bitmap_lock);
++ 	mark_buffer_dirty(bh);
++ }
++ 
++ struct inode *fs421_new_inode(const struct inode *dir, umode_t mode, int *error)
++ {
++ 	struct super_block *sb = dir->i_sb;
++ 	struct fs421_sb_info *sbi = fs421_sb(sb);
++ 	struct inode *inode = new_inode(sb);
++ 	struct buffer_head * bh;
++ 	int bits_per_zone = 8 * sb->s_blocksize;
++ 	unsigned long j;
++ 	int i;
++ 
++ 	if (!inode) {
++ 		*error = -ENOMEM;
++ 		return NULL;
++ 	}
++ 	j = bits_per_zone;
++ 	bh = NULL;
++ 	*error = -ENOSPC;
++ 	spin_lock(&bitmap_lock);
++ 	for (i = 0; i < sbi->s_imap_blocks; i++) {
++ 		bh = sbi->s_imap[i];
++ 		j = find_first_zero_bit_le(bh->b_data, bits_per_zone);
++ 		if (j < bits_per_zone)
++ 			break;
++ 	}
++ 	if (!bh || j >= bits_per_zone) {
++ 		spin_unlock(&bitmap_lock);
++ 		iput(inode);
++ 		return NULL;
++ 	}
++ 	if (__test_and_set_bit_le(j, bh->b_data)) {	/* shouldn't happen */
++ 		spin_unlock(&bitmap_lock);
++ 		printk("fs421_new_inode: bit already set\n");
++ 		iput(inode);
++ 		return NULL;
++ 	}
++ 	spin_unlock(&bitmap_lock);
++ 	mark_buffer_dirty(bh);
++ 	j += i * bits_per_zone;
++ 	if (!j || j > sbi->s_ninodes) {
++ 		iput(inode);
++ 		return NULL;
++ 	}
++ 	inode_init_owner(inode, dir, mode);
++ 	inode->i_ino = j;
++ 	inode->i_mtime = inode->i_atime = inode->i_ctime = CURRENT_TIME_SEC;
++ 	inode->i_blocks = 0;
++ 	memset(&fs421_i(inode)->i2_data, 0, sizeof(fs421_i(inode)->i2_data));
++ 	insert_inode_hash(inode);
++ 	mark_inode_dirty(inode);
++ 
++ 	*error = 0;
++ 	return inode;
++ }
++ 
++ unsigned long fs421_count_free_inodes(struct super_block *sb)
++ {
++ 	struct fs421_sb_info *sbi = fs421_sb(sb);
++ 	u32 bits = sbi->s_ninodes + 1;
++ 
++ 	return count_free(sbi->s_imap, sb->s_blocksize, 0, bits);
++ }
+diff -rcP -X ignorelist.txt linux-3.12.9/fs/fs421/dir.c project2/fs/fs421/dir.c
+*** linux-3.12.9/fs/fs421/dir.c	1969-12-31 19:00:00.000000000 -0500
+--- project2/fs/fs421/dir.c	2017-11-29 12:31:49.769475695 -0500
+***************
+*** 0 ****
+--- 1,452 ----
++ /*
++  *  linux/fs/fs421/dir.c
++  *
++  *  Copyright (C) 1991, 1992 Linus Torvalds
++  *
++  *  fs421 directory handling functions
++  *
++  *  Updated to filesystem version 3 by Daniel Aragones
++  *
++  *  Modified from minix fs for use as exercise for UMBC CMSC421 OS course
++  *      by John Y. Park
++  */
++ 
++ #include "fs421.h"
++ #include <linux/buffer_head.h>
++ #include <linux/highmem.h>
++ #include <linux/swap.h>
++ 
++ typedef struct fs421_dir_entry fs421_dirent;
++ 
++ static int fs421_readdir(struct file *, struct dir_context *);
++ 
++ const struct file_operations fs421_dir_operations = {
++ 	.llseek		= generic_file_llseek,
++ 	.read		= generic_read_dir,
++ 	.iterate	= fs421_readdir,
++ 	.fsync		= generic_file_fsync,
++ };
++ 
++ static inline void dir_put_page(struct page *page)
++ {
++ 	kunmap(page);
++ 	page_cache_release(page);
++ }
++ 
++ /*
++  * Return the offset into page `page_nr' of the last valid
++  * byte in that page, plus one.
++  */
++ static unsigned
++ fs421_last_byte(struct inode *inode, unsigned long page_nr)
++ {
++ 	unsigned last_byte = PAGE_CACHE_SIZE;
++ 
++ 	if (page_nr == (inode->i_size >> PAGE_CACHE_SHIFT))
++ 		last_byte = inode->i_size & (PAGE_CACHE_SIZE - 1);
++ 	return last_byte;
++ }
++ 
++ static inline unsigned long dir_pages(struct inode *inode)
++ {
++ 	return (inode->i_size+PAGE_CACHE_SIZE-1)>>PAGE_CACHE_SHIFT;
++ }
++ 
++ /*
++  * Helper function for writing out the fragment that has a changed
++  * dir entry, including when it is beyond the end-of-file --jyp
++  * NB: "chunk" here does not refer to our BB chunks
++  */
++ static int dir_commit_chunk(struct page *page, loff_t pos, unsigned len)
++ {
++ 	struct address_space *mapping = page->mapping;
++ 	struct inode *dir = mapping->host;
++ 	int err = 0;
++ 	block_write_end(NULL, mapping, pos, len, len, page, NULL);
++ 
++ 	if (pos+len > dir->i_size) {
++ 		i_size_write(dir, pos+len);
++ 		mark_inode_dirty(dir);
++ 	}
++ 	if (IS_DIRSYNC(dir))
++ 		err = write_one_page(page, 1);
++ 	else
++ 		unlock_page(page);
++ 	return err;
++ }
++ 
++ static struct page * dir_get_page(struct inode *dir, unsigned long n)
++ {
++ 	struct address_space *mapping = dir->i_mapping;
++ 	struct page *page = read_mapping_page(mapping, n, NULL);
++ 	if (!IS_ERR(page))
++ 		kmap(page);
++ 	return page;
++ }
++ 
++ static inline void *fs421_next_entry(void *de, struct fs421_sb_info *sbi)
++ {
++ 	return (void*)((char*)de + sbi->s_dirsize);
++ }
++ 
++ /*
++  * NB: "chunk_size" here does not refer to our BB chunks
++  */
++ static int fs421_readdir(struct file *file, struct dir_context *ctx)
++ {
++ 	struct inode *inode = file_inode(file);
++ 	struct super_block *sb = inode->i_sb;
++ 	struct fs421_sb_info *sbi = fs421_sb(sb);
++ 	unsigned chunk_size = sbi->s_dirsize;
++ 	unsigned long npages = dir_pages(inode);
++ 	unsigned long pos = ctx->pos;
++ 	unsigned offset;
++ 	unsigned long n;
++ 
++ 	ctx->pos = pos = ALIGN(pos, chunk_size);
++ 	if (pos >= inode->i_size)
++ 		return 0;
++ 
++ 	offset = pos & ~PAGE_CACHE_MASK;
++ 	n = pos >> PAGE_CACHE_SHIFT;
++ 
++ 	for ( ; n < npages; n++, offset = 0) {
++ 		char *p, *kaddr, *limit;
++ 		struct page *page = dir_get_page(inode, n);
++ 
++ 		if (IS_ERR(page))
++ 			continue;
++ 		kaddr = (char *)page_address(page);
++ 		p = kaddr+offset;
++ 		limit = kaddr + fs421_last_byte(inode, n) - chunk_size;
++ 		for ( ; p <= limit; p = fs421_next_entry(p, sbi)) {
++ 			const char *name;
++ 			__u32 inumber;
++ 			/* Remove V1,2|V3 cond --jyp */
++ 			fs421_dirent *de = (fs421_dirent *)p;
++ 			name = de->name;
++ 			inumber = de->inode;
++ 			if (inumber) {
++ 				unsigned l = strnlen(name, sbi->s_namelen);
++ 				if (!dir_emit(ctx, name, l,
++ 					      inumber, DT_UNKNOWN)) {
++ 					dir_put_page(page);
++ 					return 0;
++ 				}
++ 			}
++ 			ctx->pos += chunk_size;
++ 		}
++ 		dir_put_page(page);
++ 	}
++ 	return 0;
++ }
++ 
++ static inline int namecompare(int len, int maxlen,
++ 	const char * name, const char * buffer)
++ {
++ 	if (len < maxlen && buffer[len])
++ 		return 0;
++ 	return !memcmp(name, buffer, len);
++ }
++ 
++ /*
++  *	fs421_find_entry()
++  *
++  * finds an entry in the specified directory with the wanted name. It
++  * returns the cache buffer in which the entry was found, and the entry
++  * itself (as a parameter - res_dir). It does NOT read the inode of the
++  * entry - you'll have to do that yourself if you want to.
++  */
++ fs421_dirent *fs421_find_entry(struct dentry *dentry, struct page **res_page)
++ {
++ 	const char * name = dentry->d_name.name;
++ 	int namelen = dentry->d_name.len;
++ 	struct inode * dir = dentry->d_parent->d_inode;
++ 	struct super_block * sb = dir->i_sb;
++ 	struct fs421_sb_info * sbi = fs421_sb(sb);
++ 	unsigned long n;
++ 	unsigned long npages = dir_pages(dir);
++ 	struct page *page = NULL;
++ 	char *p;
++ 
++ 	char *namx;
++ 	__u32 inumber;
++ 	*res_page = NULL;
++ 
++ 	for (n = 0; n < npages; n++) {
++ 		char *kaddr, *limit;
++ 
++ 		page = dir_get_page(dir, n);
++ 		if (IS_ERR(page))
++ 			continue;
++ 
++ 		kaddr = (char*)page_address(page);
++ 		limit = kaddr + fs421_last_byte(dir, n) - sbi->s_dirsize;
++ 		for (p = kaddr; p <= limit; p = fs421_next_entry(p, sbi)) {
++ 			/* Remove V1,2|V3 cond --jyp */
++ 			fs421_dirent *de = (fs421_dirent *)p;
++ 			namx = de->name;
++ 			inumber = de->inode;
++ 			if (!inumber)
++ 				continue;
++ 			if (namecompare(namelen, sbi->s_namelen, name, namx))
++ 				goto found;
++ 		}
++ 		dir_put_page(page);
++ 	}
++ 	return NULL;
++ 
++ found:
++ 	*res_page = page;
++ 	return (fs421_dirent *)p;
++ }
++ 
++ /*
++  * NB: "chunk" here does not refer to our BB chunks
++  */
++ int fs421_add_link(struct dentry *dentry, struct inode *inode)
++ {
++ 	struct inode *dir = dentry->d_parent->d_inode;
++ 	const char * name = dentry->d_name.name;
++ 	int namelen = dentry->d_name.len;
++ 	struct super_block * sb = dir->i_sb;
++ 	struct fs421_sb_info * sbi = fs421_sb(sb);
++ 	struct page *page = NULL;
++ 	unsigned long npages = dir_pages(dir);
++ 	unsigned long n;
++ 	char *kaddr, *p;
++ 	fs421_dirent *de;
++ 	loff_t pos;
++ 	int err;
++ 	char *namx = NULL;
++ 	__u32 inumber;
++ 
++ 	/*
++ 	 * We take care of directory expansion in the same loop
++ 	 * This code plays outside i_size, so it locks the page
++ 	 * to protect that region.
++ 	 */
++ 	for (n = 0; n <= npages; n++) {
++ 		char *limit, *dir_end;
++ 
++ 		page = dir_get_page(dir, n);
++ 		err = PTR_ERR(page);
++ 		if (IS_ERR(page))
++ 			goto out;
++ 		lock_page(page);
++ 		kaddr = (char*)page_address(page);
++ 		dir_end = kaddr + fs421_last_byte(dir, n);
++ 		limit = kaddr + PAGE_CACHE_SIZE - sbi->s_dirsize;
++ 		for (p = kaddr; p <= limit; p = fs421_next_entry(p, sbi)) {
++ 			de = (fs421_dirent *)p;
++ 			/* Remove V1,2|V3 cond --jyp */
++ 			namx = de->name;
++ 			inumber = de->inode;
++ 			if (p == dir_end) {
++ 				/* We hit i_size */
++ 				/* Remove V1,2|V3 cond --jyp */
++ 				de->inode = 0;
++ 				goto got_it;
++ 			}
++ 			if (!inumber)
++ 				goto got_it;
++ 			err = -EEXIST;
++ 			if (namecompare(namelen, sbi->s_namelen, name, namx))
++ 				goto out_unlock;
++ 		}
++ 		unlock_page(page);
++ 		dir_put_page(page);
++ 	}
++ 	BUG();
++ 	return -EINVAL;
++ 
++ got_it:
++ 	pos = page_offset(page) + p - (char *)page_address(page);
++ 	err = fs421_prepare_chunk(page, pos, sbi->s_dirsize);
++ 	if (err)
++ 		goto out_unlock;
++ 	memcpy (namx, name, namelen);
++ 	/* Remove V1,2|V3 cond --jyp */
++ 	memset (namx + namelen, 0, sbi->s_dirsize - namelen - 2);
++ 	de->inode = inode->i_ino;
++ 	err = dir_commit_chunk(page, pos, sbi->s_dirsize);
++ 	dir->i_mtime = dir->i_ctime = CURRENT_TIME_SEC;
++ 	mark_inode_dirty(dir);
++ out_put:
++ 	dir_put_page(page);
++ out:
++ 	return err;
++ out_unlock:
++ 	unlock_page(page);
++ 	goto out_put;
++ }
++ 
++ /*
++  * NB: "chunk" here does not refer to our BB chunks
++  */
++ int fs421_delete_entry(struct fs421_dir_entry *de, struct page *page)
++ {
++ 	struct inode *inode = page->mapping->host;
++ 	char *kaddr = page_address(page);
++ 	loff_t pos = page_offset(page) + (char*)de - kaddr;
++ 	struct fs421_sb_info *sbi = fs421_sb(inode->i_sb);
++ 	unsigned len = sbi->s_dirsize;
++ 	int err;
++ 
++ 	lock_page(page);
++ 	err = fs421_prepare_chunk(page, pos, len);
++ 	if (err == 0) {
++ 		/* Remove V1,2|V3 cond --jyp */
++ 		de->inode = 0;
++ 		err = dir_commit_chunk(page, pos, len);
++ 	} else {
++ 		unlock_page(page);
++ 	}
++ 	dir_put_page(page);
++ 	inode->i_ctime = inode->i_mtime = CURRENT_TIME_SEC;
++ 	mark_inode_dirty(inode);
++ 	return err;
++ }
++ 
++ /*
++  * NB: "chunk" here does not refer to our BB chunks
++  */
++ int fs421_make_empty(struct inode *inode, struct inode *dir)
++ {
++ 	struct page *page = grab_cache_page(inode->i_mapping, 0);
++ 	struct fs421_sb_info *sbi = fs421_sb(inode->i_sb);
++ 	char *kaddr;
++ 	fs421_dirent *de;	/* moved up fm inside nested block --jyp */
++ 	int err;
++ 
++ 	if (!page)
++ 		return -ENOMEM;
++ 	err = fs421_prepare_chunk(page, 0, 2 * sbi->s_dirsize);
++ 	if (err) {
++ 		unlock_page(page);
++ 		goto fail;
++ 	}
++ 
++ 	kaddr = kmap_atomic(page);
++ 	memset(kaddr, 0, PAGE_CACHE_SIZE);
++ 
++ 	/* Remove V1,2|V3 cond --jyp */
++ 	de = (fs421_dirent *)kaddr;
++ 
++ 	de->inode = inode->i_ino;
++ 	strcpy(de->name, ".");
++ 	de = fs421_next_entry(de, sbi);
++ 	de->inode = dir->i_ino;
++ 	strcpy(de->name, "..");
++ 
++ 	kunmap_atomic(kaddr);
++ 
++ 	err = dir_commit_chunk(page, 0, 2 * sbi->s_dirsize);
++ fail:
++ 	page_cache_release(page);
++ 	return err;
++ }
++ 
++ /*
++  * routine to check that the specified directory is empty (for rmdir)
++  */
++ int fs421_empty_dir(struct inode * inode)
++ {
++ 	struct page *page = NULL;
++ 	unsigned long i, npages = dir_pages(inode);
++ 	struct fs421_sb_info *sbi = fs421_sb(inode->i_sb);
++ 	char *name;
++ 	__u32 inumber;
++ 
++ 	for (i = 0; i < npages; i++) {
++ 		char *p, *kaddr, *limit;
++ 
++ 		page = dir_get_page(inode, i);
++ 		if (IS_ERR(page))
++ 			continue;
++ 
++ 		kaddr = (char *)page_address(page);
++ 		limit = kaddr + fs421_last_byte(inode, i) - sbi->s_dirsize;
++ 		for (p = kaddr; p <= limit; p = fs421_next_entry(p, sbi)) {
++ 			/* Remove V1,2|V3 cond --jyp */
++ 			fs421_dirent *de = (fs421_dirent *)p;
++ 			name = de->name;
++ 			inumber = de->inode;
++ 
++ 			if (inumber != 0) {
++ 				/* check for . and .. */
++ 				if (name[0] != '.')
++ 					goto not_empty;
++ 				if (!name[1]) {
++ 					if (inumber != inode->i_ino)
++ 						goto not_empty;
++ 				} else if (name[1] != '.')
++ 					goto not_empty;
++ 				else if (name[2])
++ 					goto not_empty;
++ 			}
++ 		}
++ 		dir_put_page(page);
++ 	}
++ 	return 1;
++ 
++ not_empty:
++ 	dir_put_page(page);
++ 	return 0;
++ }
++ 
++ /*
++  * Releases the page
++  *
++  * NB: "chunk" here does not refer to our BB chunks
++  */
++ void fs421_set_link(struct fs421_dir_entry *de, struct page *page,
++ 	struct inode *inode)
++ {
++ 	struct inode *dir = page->mapping->host;
++ 	struct fs421_sb_info *sbi = fs421_sb(dir->i_sb);
++ 	loff_t pos = page_offset(page) +
++ 			(char *)de-(char*)page_address(page);
++ 	int err;
++ 
++ 	lock_page(page);
++ 
++ 	err = fs421_prepare_chunk(page, pos, sbi->s_dirsize);
++ 	if (err == 0) {
++ 		/* Remove V1,2|V3 cond --jyp */
++ 		de->inode = inode->i_ino;
++ 		err = dir_commit_chunk(page, pos, sbi->s_dirsize);
++ 	} else {
++ 		unlock_page(page);
++ 	}
++ 	dir_put_page(page);
++ 	dir->i_mtime = dir->i_ctime = CURRENT_TIME_SEC;
++ 	mark_inode_dirty(dir);
++ }
++ 
++ struct fs421_dir_entry * fs421_dotdot (struct inode *dir, struct page **p)
++ {
++ 	struct page *page = dir_get_page(dir, 0);
++ 	struct fs421_sb_info *sbi = fs421_sb(dir->i_sb);
++ 	struct fs421_dir_entry *de = NULL;
++ 
++ 	if (!IS_ERR(page)) {
++ 		de = fs421_next_entry(page_address(page), sbi);
++ 		*p = page;
++ 	}
++ 	return de;
++ }
++ 
++ ino_t fs421_inode_by_name(struct dentry *dentry)
++ {
++ 	struct page *page;
++ 	struct fs421_dir_entry *de = fs421_find_entry(dentry, &page);
++ 	ino_t res = 0;
++ 
++ 	if (de) {
++ 		/* Remove V1,2|V3 cond --jyp */
++ 		res = de->inode;
++ 		dir_put_page(page);
++ 	}
++ 	return res;
++ }
+diff -rcP -X ignorelist.txt linux-3.12.9/fs/fs421/file.c project2/fs/fs421/file.c
+*** linux-3.12.9/fs/fs421/file.c	1969-12-31 19:00:00.000000000 -0500
+--- project2/fs/fs421/file.c	2017-11-29 12:31:49.769475695 -0500
+***************
+*** 0 ****
+--- 1,62 ----
++ /*
++  *  linux/fs/fs421/file.c
++  *
++  *  Copyright (C) 1991, 1992 Linus Torvalds
++  *
++  *  Modified from minix fs for use as exercise for UMBC CMSC421 OS course
++  *      by John Y. Park
++  */
++ 
++ /*
++  *
++  *  fs421 regular file handling primitives
++  */
++ 
++ #include "fs421.h"
++ 
++ /*
++  * We have mostly NULLs here: the current defaults are OK for
++  * the fs421 filesystem.
++  */
++ const struct file_operations fs421_file_operations = {
++ 	.llseek		= generic_file_llseek,
++ 	.read		= do_sync_read,
++ 	.aio_read	= generic_file_aio_read,
++ 	.write		= do_sync_write,
++ 	.aio_write	= generic_file_aio_write,
++ 	.mmap		= generic_file_mmap,
++ 	.fsync		= generic_file_fsync,
++ 	.splice_read	= generic_file_splice_read,
++ #ifdef CANONICAL
++ 	.release	= fs421_release,
++ #endif
++ };
++ 
++ static int fs421_setattr(struct dentry *dentry, struct iattr *attr)
++ {
++ 	struct inode *inode = dentry->d_inode;
++ 	int error;
++ 
++ 	error = inode_change_ok(inode, attr);
++ 	if (error)
++ 		return error;
++ 
++ 	if ((attr->ia_valid & ATTR_SIZE) &&
++ 	    attr->ia_size != i_size_read(inode)) {
++ 		error = inode_newsize_ok(inode, attr->ia_size);
++ 		if (error)
++ 			return error;
++ 
++ 		truncate_setsize(inode, attr->ia_size);
++ 		fs421_truncate(inode);
++ 	}
++ 
++ 	setattr_copy(inode, attr);
++ 	mark_inode_dirty(inode);
++ 	return 0;
++ }
++ 
++ const struct inode_operations fs421_file_inode_operations = {
++ 	.setattr	= fs421_setattr,
++ 	.getattr	= fs421_getattr,
++ };
+diff -rcP -X ignorelist.txt linux-3.12.9/fs/fs421/fs421_fs.h project2/fs/fs421/fs421_fs.h
+*** linux-3.12.9/fs/fs421/fs421_fs.h	1969-12-31 19:00:00.000000000 -0500
+--- project2/fs/fs421/fs421_fs.h	2017-11-29 12:31:49.769475695 -0500
+***************
+*** 0 ****
+--- 1,68 ----
++ #ifndef _LINUX_FS421_FS_H
++ #define _LINUX_FS421_FS_H
++ 
++ #include <linux/types.h>
++ #include <linux/magic.h>
++ 
++ /*
++  * The fs421 filesystem constants/structures
++  *
++  *  Modified from minix fs for use as exercise for UMBC CMSC421 OS course
++  *      by John Y. Park
++  */
++ 
++ /* Should eventually move this line to include/uapi/linux/magic.h --jyp */
++ #define FS421_SUPER_MAGIC	0x3234		/* Why this #? :-) */
++ 
++ #define FS421_ROOT_INO 1
++ 
++ /* Not the same as the bogus LINK_MAX in <linux/limits.h>. Oh well. */
++ #define FS421_LINK_MAX	65530
++ 
++ #define FS421_VALID_FS		0x0001		/* Clean fs. */
++ #define FS421_ERROR_FS		0x0002		/* fs has errors. */
++ 
++ /*
++  * The layout of the inode on disk in fs421.  Size is 64 bytes.
++  * (Based on V2 minix fs, but block pointer layout/interpretation
++  * completely different from minix)
++  */
++ struct fs421_inode {
++ 	__u16 i_mode;
++ 	__u16 i_nlinks;
++ 	__u16 i_uid;
++ 	__u16 i_gid;
++ 	__u32 i_size;
++ 	__u32 i_atime;
++ 	__u32 i_mtime;
++ 	__u32 i_ctime;
++ 	__u32 i_chunk[10];
++ };
++ 
++ /*
++  * fs421 super-block data on disk
++  */
++ struct fs421_super_block {
++ 	__u16 s_ninodes; /* Total # inodes */
++ 	__u16 s_unused1;/* used to be s_nzones; not used in v2 (use s_zones);
++ 			 * Gone in v3--jyp */
++ 	__u16 s_imap_blocks;	/* Bitmap is indexed directly by inode#
++ 				 * (so, 1-origin; bit 0 always set) */
++ 	__u16 s_zmap_blocks;	/* Note that bitmap of used zones is zone# + 1
++ 				 * (so, 1-origin again, w/bit 0 always set) */
++ 	__u16 s_firstdatazone;	/* Actual index of first zone of data region */
++ 	__u16 s_log_zone_size;	/* In units of s_blocksize; currently 0 */
++ 	__u32 s_max_size;	/* Inited to 2^31 - 1 */
++ 	__u16 s_magic;		/* ?? for FS421 */
++ 	__u16 s_state;		/* Either 1 (ok) or 2 (broken) */
++ 	__u32 s_zones;		/* number of zones on entire partition */
++ 	/* Everything beyond here is new (w.r.t. v2 minix) */
++ 	__u16 s_blocksize;	/* added in v3 minix --jyp */
++ 	__u8  s_disk_version;
++ };
++ 
++ struct fs421_dir_entry {
++ 	__u16 inode;
++ 	char name[14]; /* was 0--jyp */
++ };
++ #endif
+diff -rcP -X ignorelist.txt linux-3.12.9/fs/fs421/fs421.h project2/fs/fs421/fs421.h
+*** linux-3.12.9/fs/fs421/fs421.h	1969-12-31 19:00:00.000000000 -0500
+--- project2/fs/fs421/fs421.h	2017-11-29 12:31:49.769475695 -0500
+***************
+*** 0 ****
+--- 1,119 ----
++ #ifndef FS_FS421_H
++ #define FS_FS421_H
++ 
++ #include <linux/fs.h>
++ #include <linux/pagemap.h>
++ /* Following really belongs in include/uapi/linux/ */
++ #define CANONICAL
++ #include "fs421_fs.h"
++ /*
++  *
++  *  Modified from minix fs for use as exercise for UMBC CMSC421 OS course
++  *      by John Y. Park
++  */
++ #define INODE_VERSION(inode)	fs421_sb(inode->i_sb)->s_version
++ #define FS421_V2		0x0002		/* fs421 V2 fs */
++ 
++ /*
++  * fs421 fs inode data in memory
++  *
++  * You can add to this data structure to store your own
++  * per-inode information
++  */
++ struct fs421_inode_info {
++ 	/* Used to store in-core block pointers */
++ 	__u32 i2_data[16];
++ 	struct inode vfs_inode;
++ };
++ 
++ /*
++  * fs421 super-block data in memory
++  *
++  * You can add to this data structure to store your own
++  * filesystem-wide information
++  */
++ struct fs421_sb_info {
++ 	unsigned long s_ninodes;
++ 	unsigned long s_nzones;
++ 	unsigned long s_imap_blocks;
++ 	unsigned long s_zmap_blocks;
++ 	unsigned long s_firstdatazone;
++ 	unsigned long s_log_zone_size;
++ 	unsigned long s_max_size;
++ 	int s_dirsize;
++ 	int s_namelen;
++ 	struct buffer_head ** s_imap;
++ 	struct buffer_head ** s_zmap;
++ 	struct buffer_head * s_sbh;
++ 	struct fs421_super_block * s_ms;
++ 	unsigned short s_mount_state;
++ 	unsigned short s_version;
++ 	/*
++ 	 * HINT-STUB:
++ 	 * Following holds precomputed offsets into zmap for
++ 	 * each Binary Buddy level, in bits from start of map
++ 	 * (see fs421_init_zmap_offsets())
++ 	 */
++ 	__u32 s_zmap_offset[32 + 1]; /* need 1 extra for end of last */
++ 	unsigned s_zmap_nlevels;	/* number of levels in BB map */
++ };
++ 
++ unsigned long fs421_init_zmap_offsets(struct fs421_sb_info *);
++ 
++ extern struct inode *fs421_iget(struct super_block *, unsigned long);
++ extern struct fs421_inode * fs421_raw_inode(struct super_block *, ino_t, struct buffer_head **);
++ extern struct inode * fs421_new_inode(const struct inode *, umode_t, int *);
++ extern void fs421_free_inode(struct inode * inode);
++ extern unsigned long fs421_count_free_inodes(struct super_block *sb);
++ 
++ extern int fs421_new_block(struct inode * inode, unsigned size_log2);
++ extern void fs421_free_block(struct inode *, unsigned long block, unsigned size);
++ 
++ extern unsigned long fs421_count_free_blocks(struct super_block *sb);
++ extern int fs421_getattr(struct vfsmount *, struct dentry *, struct kstat *);
++ extern int fs421_prepare_chunk(struct page *page, loff_t pos, unsigned len);
++ extern void fs421_truncate(struct inode *);
++ extern void fs421_set_inode(struct inode *, dev_t);
++ extern int fs421_get_block(struct inode *, sector_t, struct buffer_head *, int);
++ #ifdef CANONICAL
++ extern int fs421_release(struct inode *, struct file *);
++ #endif
++ extern unsigned fs421_blocks(loff_t, struct super_block *);
++ 
++ extern struct fs421_dir_entry *fs421_find_entry(struct dentry*, struct page**);
++ extern int fs421_add_link(struct dentry*, struct inode*);
++ extern int fs421_delete_entry(struct fs421_dir_entry*, struct page*);
++ extern int fs421_make_empty(struct inode*, struct inode*);
++ extern int fs421_empty_dir(struct inode*);
++ extern void fs421_set_link(struct fs421_dir_entry*, struct page*, struct inode*);
++ extern struct fs421_dir_entry *fs421_dotdot(struct inode*, struct page**);
++ extern ino_t fs421_inode_by_name(struct dentry*);
++ 
++ extern const struct inode_operations fs421_file_inode_operations;
++ extern const struct inode_operations fs421_dir_inode_operations;
++ extern const struct file_operations fs421_file_operations;
++ extern const struct file_operations fs421_dir_operations;
++ 
++ static inline struct fs421_sb_info *fs421_sb(struct super_block *sb)
++ {
++ 	return sb->s_fs_info;
++ }
++ 
++ static inline struct fs421_inode_info *fs421_i(struct inode *inode)
++ {
++ 	return list_entry(inode, struct fs421_inode_info, vfs_inode);
++ }
++ 
++ static inline unsigned fs421_blocks_needed(unsigned bits, unsigned blocksize)
++ {
++ 	return DIV_ROUND_UP(bits, blocksize * 8);
++ }
++ 
++ /*
++  * For sake of simplicity, made fs421 little-endian, and removed all
++  * dependencies on following preprocs:
++  *   CONFIG_FS421_FS_NATIVE_ENDIAN
++  *   CONFIG_FS421_FS_BIG_ENDIAN_16BIT_INDEXED
++  *     --jyp
++  */
++ #endif /* FS_FS421_H */
+diff -rcP -X ignorelist.txt linux-3.12.9/fs/fs421/inode.c project2/fs/fs421/inode.c
+*** linux-3.12.9/fs/fs421/inode.c	1969-12-31 19:00:00.000000000 -0500
+--- project2/fs/fs421/inode.c	2017-11-29 12:31:49.769475695 -0500
+***************
+*** 0 ****
+--- 1,587 ----
++ /*
++  *  linux/fs/fs421/inode.c
++  *
++  *  Copyright (C) 1991, 1992  Linus Torvalds
++  *
++  *  Copyright (C) 1996  Gertjan van Wingerde
++  *	Minix V2 fs support.
++  *
++  *  Modified for 680x0 by Andreas Schwab
++  *  Updated to filesystem version 3 by Daniel Aragones
++  *
++  *  Modified for use as exercise for UMBC CMSC421 OS course
++  *      by John Y. Park
++  */
++ 
++ #include <linux/module.h>
++ #include "fs421.h"
++ #include <linux/buffer_head.h>
++ #include <linux/slab.h>
++ #include <linux/init.h>
++ #include <linux/highuid.h>
++ #include <linux/vfs.h>
++ #include <linux/writeback.h>
++ 
++ static int fs421_write_inode(struct inode *inode,
++ 		struct writeback_control *wbc);
++ static int fs421_statfs(struct dentry *dentry, struct kstatfs *buf);
++ static int fs421_remount (struct super_block * sb, int * flags, char * data);
++ 
++ static void fs421_evict_inode(struct inode *inode)
++ {
++ 	truncate_inode_pages(&inode->i_data, 0);
++ 	if (!inode->i_nlink) {
++ 		inode->i_size = 0;
++ 		fs421_truncate(inode);
++ 	}
++ 	invalidate_inode_buffers(inode);
++ 	clear_inode(inode);
++ 	if (!inode->i_nlink)
++ 		fs421_free_inode(inode);
++ }
++ 
++ static void fs421_put_super(struct super_block *sb)
++ {
++ 	int i;
++ 	struct fs421_sb_info *sbi = fs421_sb(sb);
++ 
++ 	if (!(sb->s_flags & MS_RDONLY)) {
++ 		/* Removed V3 stuff--following line is v1/v2  --jyp */
++ 		sbi->s_ms->s_state = sbi->s_mount_state;
++ 
++ 		mark_buffer_dirty(sbi->s_sbh);
++ 	}
++ 	for (i = 0; i < sbi->s_imap_blocks; i++)
++ 		brelse(sbi->s_imap[i]);
++ 	for (i = 0; i < sbi->s_zmap_blocks; i++)
++ 		brelse(sbi->s_zmap[i]);
++ 	brelse (sbi->s_sbh);
++ 	kfree(sbi->s_imap);  /* Note: this frees up both imap & zmap --jyp */
++ 	sb->s_fs_info = NULL;
++ 	kfree(sbi);
++ }
++ 
++ static struct kmem_cache * fs421_inode_cachep;
++ 
++ static struct inode *fs421_alloc_inode(struct super_block *sb)
++ {
++ 	struct fs421_inode_info *ei;
++ 	ei = (struct fs421_inode_info *)kmem_cache_alloc(fs421_inode_cachep, GFP_KERNEL);
++ 	if (!ei)
++ 		return NULL;
++ 	return &ei->vfs_inode;
++ }
++ 
++ static void fs421_i_callback(struct rcu_head *head)
++ {
++ 	struct inode *inode = container_of(head, struct inode, i_rcu);
++ 	kmem_cache_free(fs421_inode_cachep, fs421_i(inode));
++ }
++ 
++ static void fs421_destroy_inode(struct inode *inode)
++ {
++ 	call_rcu(&inode->i_rcu, fs421_i_callback);
++ }
++ 
++ static void init_once(void *foo)
++ {
++ 	struct fs421_inode_info *ei = (struct fs421_inode_info *) foo;
++ 
++ 	inode_init_once(&ei->vfs_inode);
++ }
++ 
++ static int init_inodecache(void)
++ {
++ 	fs421_inode_cachep = kmem_cache_create("fs421_inode_cache",
++ 					     sizeof(struct fs421_inode_info),
++ 					     0, (SLAB_RECLAIM_ACCOUNT|
++ 						SLAB_MEM_SPREAD),
++ 					     init_once);
++ 	if (fs421_inode_cachep == NULL)
++ 		return -ENOMEM;
++ 	return 0;
++ }
++ 
++ static void destroy_inodecache(void)
++ {
++ 	/*
++ 	 * Make sure all delayed rcu free inodes are flushed before we
++ 	 * destroy cache.
++ 	 */
++ 	rcu_barrier();
++ 	kmem_cache_destroy(fs421_inode_cachep);
++ }
++ 
++ static const struct super_operations fs421_sops = {
++ 	.alloc_inode	= fs421_alloc_inode,
++ 	.destroy_inode	= fs421_destroy_inode,
++ 	.write_inode	= fs421_write_inode,
++ 	.evict_inode	= fs421_evict_inode,
++ 	.put_super	= fs421_put_super,
++ 	.statfs		= fs421_statfs,
++ 	.remount_fs	= fs421_remount,
++ };
++ 
++ static int fs421_remount (struct super_block * sb, int * flags, char * data)
++ {
++ 	struct fs421_sb_info * sbi = fs421_sb(sb);
++ 	struct fs421_super_block * ms;
++ 
++ 	ms = sbi->s_ms;
++ 	if ((*flags & MS_RDONLY) == (sb->s_flags & MS_RDONLY))
++ 		return 0;
++ 	if (*flags & MS_RDONLY) {
++ 		if (ms->s_state & FS421_VALID_FS ||
++ 		    !(sbi->s_mount_state & FS421_VALID_FS))
++ 			return 0;
++ 		/* Mounting a rw partition read-only. */
++ 		ms->s_state = sbi->s_mount_state;
++ 		mark_buffer_dirty(sbi->s_sbh);
++ 	} else {
++ 	  	/* Mount a partition which is read-only, read-write. */
++ 		sbi->s_mount_state = ms->s_state;
++ 		ms->s_state &= ~FS421_VALID_FS;
++ 
++ 		mark_buffer_dirty(sbi->s_sbh);
++ 
++ 		if (!(sbi->s_mount_state & FS421_VALID_FS))
++ 			printk("FS421-fs warning: remounting unchecked fs, "
++ 				"running fsck is recommended\n");
++ 		else if ((sbi->s_mount_state & FS421_ERROR_FS))
++ 			printk("FS421-fs warning: remounting fs with errors, "
++ 				"running fsck is recommended\n");
++ 	}
++ 	return 0;
++ }
++ 
++ static int fs421_fill_super(struct super_block *s, void *data, int silent)
++ {
++ 	struct buffer_head *bh;
++ 	struct buffer_head **map;
++ 	struct fs421_super_block *ms;
++ 	unsigned long i, block;
++ 	struct inode *root_inode;
++ 	struct fs421_sb_info *sbi;
++ 	int ret = -EINVAL;
++ 
++ 	sbi = kzalloc(sizeof(struct fs421_sb_info), GFP_KERNEL);
++ 	if (!sbi)
++ 		return -ENOMEM;
++ 	s->s_fs_info = sbi;
++ 
++ 	BUILD_BUG_ON(64 != sizeof(struct fs421_inode));
++ 
++ 	/* NB: this is changed later, after fetching actual SB --jyp */
++ 	if (!sb_set_blocksize(s, BLOCK_SIZE))
++ 		goto out_bad_hblock;
++ 
++ 	if (!(bh = sb_bread(s, 1)))
++ 		goto out_bad_sb;
++ 
++ 	ms = (struct fs421_super_block *) bh->b_data;
++ 	sbi->s_ms = ms;
++ 	sbi->s_sbh = bh;
++ 	/* Moved this up higher --jyp */
++ 	if (ms->s_magic == FS421_SUPER_MAGIC) {
++ 		sbi->s_version = FS421_V2;
++ 	} else
++ 		goto out_no_fs;
++ 
++ 	sbi->s_mount_state = ms->s_state;
++ 	sbi->s_ninodes = ms->s_ninodes;
++ 	sbi->s_imap_blocks = ms->s_imap_blocks;
++ 	sbi->s_zmap_blocks = ms->s_zmap_blocks;
++ 	sbi->s_firstdatazone = ms->s_firstdatazone;
++ 	sbi->s_log_zone_size = ms->s_log_zone_size;
++ 	sbi->s_max_size = ms->s_max_size;
++ 	s->s_magic = ms->s_magic;
++ 	/* Following was specific to V2; Removed a bunch of V1 & V3 stuff
++ 	 * --jyp
++ 	 * "if (s->s_magic == FS421_SUPER_MAGIC) {"
++ 	 */
++ 	sbi->s_version = FS421_V2;
++ 	sbi->s_nzones = ms->s_zones;
++ 	sbi->s_dirsize = 16;
++ 	sbi->s_namelen = 14;
++ 	s->s_max_links = FS421_LINK_MAX;
++ 	/* Following borrowed from V3; it didn't seem to hurt MINIX that
++ 	 * this was (re)set down here  --jyp X */
++ 	sb_set_blocksize(s, ms->s_blocksize);
++ 
++ 	/*
++ 	 * Allocate the buffer map to keep the superblock small.
++ 	 */
++ 	if (sbi->s_imap_blocks == 0 || sbi->s_zmap_blocks == 0)
++ 		goto out_illegal_sb;
++ 	i = (sbi->s_imap_blocks + sbi->s_zmap_blocks) * sizeof(bh);
++ 	map = kzalloc(i, GFP_KERNEL);
++ 	if (!map)
++ 		goto out_no_map;
++ 	sbi->s_imap = &map[0];
++ 	sbi->s_zmap = &map[sbi->s_imap_blocks];
++ 
++ 	block=2;
++ 	for (i=0 ; i < sbi->s_imap_blocks ; i++) {
++ 		if (!(sbi->s_imap[i]=sb_bread(s, block)))
++ 			goto out_no_bitmap;
++ 		block++;
++ 	}
++ 	for (i=0 ; i < sbi->s_zmap_blocks ; i++) {
++ 		if (!(sbi->s_zmap[i]=sb_bread(s, block)))
++ 			goto out_no_bitmap;
++ 		block++;
++ 	}
++ 
++ 	/* Orig.; I think just for yucks  --jyp */
++ 	__set_bit(0,(unsigned long *) sbi->s_imap[0]->b_data);
++ 
++ 	/* Apparently minix can create filesystems that allocate more blocks for
++ 	 * the bitmaps than needed.  We simply ignore that, but verify it didn't
++ 	 * create one with not enough blocks and bail out if so.
++ 	 */
++ 	block = fs421_blocks_needed(sbi->s_ninodes, s->s_blocksize);
++ 	if (sbi->s_imap_blocks < block) {
++ 		printk("FS421-fs: file system does not have enough "
++ 				"imap blocks allocated.  Refusing to mount\n");
++ 		goto out_no_bitmap;
++ 	}
++ 
++ 	/*
++ 	 * HINT-STUB:
++ 	 * fs421_blocks_needed() is a trivial inline func that converts a
++ 	 * bitmap size, in bits, into the number of blocks needed to hold
++ 	 * that bitmap on the disk.  In the original MINIX fs code
++ 	 * (pre-binary-buddy), it was just passed the number of data blocks:
++ 	 *
++ 	 *   block = fs421_blocks_needed(sbi->s_nzones - sbi->s_firstdatazone,
++ 	 *		s->s_blocksize);
++ 	 *
++ 	 * and that gave us the size of the bitmap.
++ 	 * This wil not work for our new BB free block map, which has
++ 	 * many more levels of bitmaps. We must now calculate the sizes of
++ 	 * all of the BB levels, as well as accounting for the 32-bit
++ 	 * word-aligned padding for each level,
++ 	 * THEN pass this total bitmap size in bits to fs421_blocks_needed()
++ 	 * This is all done as a by-product of the calculations done in
++ 	 * fs421_init_zmap_offsets()
++ 	 */
++ 
++ 	block = fs421_blocks_needed(fs421_init_zmap_offsets(sbi),
++ 			s->s_blocksize);
++ 
++ 	if (sbi->s_zmap_blocks < block) {
++ 		printk("FS421-fs: file system does not have enough "
++ 				"zmap blocks allocated.  Refusing to mount.\n");
++ 		goto out_no_bitmap;
++ 	}
++ 
++ 	/* set up enough so that it can read an inode */
++ 	s->s_op = &fs421_sops;
++ 	root_inode = fs421_iget(s, FS421_ROOT_INO);
++ 	if (IS_ERR(root_inode)) {
++ 		ret = PTR_ERR(root_inode);
++ 		goto out_no_root;
++ 	}
++ 
++ 	ret = -ENOMEM;
++ 	s->s_root = d_make_root(root_inode);
++ 	if (!s->s_root)
++ 		goto out_no_root;
++ 
++ 	if (!(s->s_flags & MS_RDONLY)) {
++ 		ms->s_state &= ~FS421_VALID_FS;
++ 		mark_buffer_dirty(bh);
++ 	}
++ 	if (!(sbi->s_mount_state & FS421_VALID_FS))
++ 		printk("FS421-fs: mounting unchecked file system, "
++ 			"running fsck is recommended\n");
++ 	else if (sbi->s_mount_state & FS421_ERROR_FS)
++ 		printk("FS421-fs: mounting file system with errors, "
++ 			"running fsck is recommended\n");
++ 
++ 	return 0;
++ 
++ out_no_root:
++ 	if (!silent)
++ 		printk("FS421-fs: get root inode failed\n");
++ 	goto out_freemap;
++ 
++ out_no_bitmap:
++ 	printk("FS421-fs: bad superblock or unable to read bitmaps\n");
++ out_freemap:
++ 	for (i = 0; i < sbi->s_imap_blocks; i++)
++ 		brelse(sbi->s_imap[i]);
++ 	for (i = 0; i < sbi->s_zmap_blocks; i++)
++ 		brelse(sbi->s_zmap[i]);
++ 	kfree(sbi->s_imap);
++ 	goto out_release;
++ 
++ out_no_map:
++ 	ret = -ENOMEM;
++ 	if (!silent)
++ 		printk("FS421-fs: can't allocate map\n");
++ 	goto out_release;
++ 
++ out_illegal_sb:
++ 	if (!silent)
++ 		printk("FS421-fs: bad superblock\n");
++ 	goto out_release;
++ 
++ out_no_fs:
++ 	if (!silent)
++ 		printk("VFS: Can't find a Fs421 filesystem V1 | V2 | V3 "
++ 		       "on device %s.\n", s->s_id);
++ out_release:
++ 	brelse(bh);
++ 	goto out;
++ 
++ out_bad_hblock:
++ 	printk("FS421-fs: blocksize too small for device\n");
++ 	goto out;
++ 
++ out_bad_sb:
++ 	printk("FS421-fs: unable to read superblock\n");
++ out:
++ 	s->s_fs_info = NULL;
++ 	kfree(sbi);
++ 	return ret;
++ }
++ 
++ static int fs421_statfs(struct dentry *dentry, struct kstatfs *buf)
++ {
++ 	struct super_block *sb = dentry->d_sb;
++ 	struct fs421_sb_info *sbi = fs421_sb(sb);
++ 	u64 id = huge_encode_dev(sb->s_bdev->bd_dev);
++ 	buf->f_type = sb->s_magic;
++ 	buf->f_bsize = sb->s_blocksize;
++ 	buf->f_blocks = (sbi->s_nzones - sbi->s_firstdatazone) << sbi->s_log_zone_size;
++ 	buf->f_bfree = fs421_count_free_blocks(sb);
++ 	buf->f_bavail = buf->f_bfree;
++ 	buf->f_files = sbi->s_ninodes;
++ 	buf->f_ffree = fs421_count_free_inodes(sb);
++ 	buf->f_namelen = sbi->s_namelen;
++ 	buf->f_fsid.val[0] = (u32)id;
++ 	buf->f_fsid.val[1] = (u32)(id >> 32);
++ 
++ 	return 0;
++ }
++ 
++ static int fs421_writepage(struct page *page, struct writeback_control *wbc)
++ {
++ 	return block_write_full_page(page, fs421_get_block, wbc);
++ }
++ 
++ static int fs421_readpage(struct file *file, struct page *page)
++ {
++ 	return block_read_full_page(page,fs421_get_block);
++ }
++ 
++ /*
++  * The "chunk" here is from original MINIX, and does note refer to the
++  * "chunks" concept from our binary buddy allocation scheme --jyp
++  */
++ int fs421_prepare_chunk(struct page *page, loff_t pos, unsigned len)
++ {
++ 	return __block_write_begin(page, pos, len, fs421_get_block);
++ }
++ 
++ static void fs421_write_failed(struct address_space *mapping, loff_t to)
++ {
++ 	struct inode *inode = mapping->host;
++ 
++ 	if (to > inode->i_size) {
++ 		truncate_pagecache(inode, inode->i_size);
++ 		fs421_truncate(inode);
++ 	}
++ }
++ 
++ static int fs421_write_begin(struct file *file, struct address_space *mapping,
++ 			loff_t pos, unsigned len, unsigned flags,
++ 			struct page **pagep, void **fsdata)
++ {
++ 	int ret;
++ 
++ 	ret = block_write_begin(mapping, pos, len, flags, pagep,
++ 				fs421_get_block);
++ 	if (unlikely(ret))
++ 		fs421_write_failed(mapping, pos + len);
++ 
++ 	return ret;
++ }
++ 
++ static sector_t fs421_bmap(struct address_space *mapping, sector_t block)
++ {
++ 	return generic_block_bmap(mapping,block,fs421_get_block);
++ }
++ 
++ static const struct address_space_operations fs421_aops = {
++ 	.readpage = fs421_readpage,
++ 	.writepage = fs421_writepage,
++ 	.write_begin = fs421_write_begin,
++ 	.write_end = generic_write_end,
++ 	.bmap = fs421_bmap
++ };
++ 
++ static const struct inode_operations fs421_symlink_inode_operations = {
++ 	.readlink	= generic_readlink,
++ 	.follow_link	= page_follow_link_light,
++ 	.put_link	= page_put_link,
++ 	.getattr	= fs421_getattr,
++ };
++ 
++ void fs421_set_inode(struct inode *inode, dev_t rdev)
++ {
++ 	if (S_ISREG(inode->i_mode)) {
++ 		inode->i_op = &fs421_file_inode_operations;
++ 		inode->i_fop = &fs421_file_operations;
++ 		inode->i_mapping->a_ops = &fs421_aops;
++ 	} else if (S_ISDIR(inode->i_mode)) {
++ 		inode->i_op = &fs421_dir_inode_operations;
++ 		inode->i_fop = &fs421_dir_operations;
++ 		inode->i_mapping->a_ops = &fs421_aops;
++ 	} else if (S_ISLNK(inode->i_mode)) {
++ 		inode->i_op = &fs421_symlink_inode_operations;
++ 		inode->i_mapping->a_ops = &fs421_aops;
++ 	} else
++ 		init_special_inode(inode, inode->i_mode, rdev);
++ }
++ 
++ /*
++  * The global function to read an inode.
++  * (Amalg. of fs421_iget() and V2_fs421_iget() --jyp
++  */
++ struct inode *fs421_iget(struct super_block *sb, unsigned long ino)
++ {
++ 	struct inode *inode;
++ 	struct buffer_head * bh;
++ 	struct fs421_inode * raw_inode;
++ 	struct fs421_inode_info *fs421_inode;
++ 	int i;
++ 
++ 	inode = iget_locked(sb, ino);
++ 	if (!inode)
++ 		return ERR_PTR(-ENOMEM);
++ 	if (!(inode->i_state & I_NEW))
++ 		return inode;
++ 
++ 	/* Remove V1|V2 cond --jyp */
++ 	/* Remainder of function is from V2_fs421_iget() --jyp */
++ 	fs421_inode = fs421_i(inode);
++ 	raw_inode = fs421_raw_inode(inode->i_sb, inode->i_ino, &bh);
++ 	if (!raw_inode) {
++ 		iget_failed(inode);
++ 		return ERR_PTR(-EIO);
++ 	}
++ 	inode->i_mode = raw_inode->i_mode;
++ 	i_uid_write(inode, raw_inode->i_uid);
++ 	i_gid_write(inode, raw_inode->i_gid);
++ 	set_nlink(inode, raw_inode->i_nlinks);
++ 	inode->i_size = raw_inode->i_size;
++ 	inode->i_mtime.tv_sec = raw_inode->i_mtime;
++ 	inode->i_atime.tv_sec = raw_inode->i_atime;
++ 	inode->i_ctime.tv_sec = raw_inode->i_ctime;
++ 	inode->i_mtime.tv_nsec = 0;
++ 	inode->i_atime.tv_nsec = 0;
++ 	inode->i_ctime.tv_nsec = 0;
++ 	inode->i_blocks = 0;
++ 
++ 	for (i = 0; i < 10; i++)
++ 		fs421_inode->i2_data[i] = raw_inode->i_chunk[i];
++ 	fs421_set_inode(inode, old_decode_dev(raw_inode->i_chunk[0]));
++ 
++ 	brelse(bh);
++ 	unlock_new_inode(inode);
++ 	return inode;
++ }
++ 
++ static int fs421_write_inode(struct inode *inode, struct writeback_control *wbc)
++ {
++ 	int err = 0;
++ 	struct buffer_head *bh;
++ 	struct fs421_inode * raw_inode;
++ 	struct fs421_inode_info *fs421_inode = fs421_i(inode);
++ 	int i;
++ 
++ 	/* Remove V1|V2 cond --jyp */
++ 	/* This part of function is from V2_fs421_iget() --jyp */
++ 	raw_inode = fs421_raw_inode(inode->i_sb, inode->i_ino, &bh);
++ 	if (!raw_inode)
++ 		return EIO;
++ 	raw_inode->i_mode = inode->i_mode;
++ 	raw_inode->i_uid = fs_high2lowuid(i_uid_read(inode));
++ 	raw_inode->i_gid = fs_high2lowgid(i_gid_read(inode));
++ 	raw_inode->i_nlinks = inode->i_nlink;
++ 	raw_inode->i_size = inode->i_size;
++ 	raw_inode->i_mtime = inode->i_mtime.tv_sec;
++ 	raw_inode->i_atime = inode->i_atime.tv_sec;
++ 	raw_inode->i_ctime = inode->i_ctime.tv_sec;
++ 	if (S_ISCHR(inode->i_mode) || S_ISBLK(inode->i_mode))
++ 		raw_inode->i_chunk[0] = old_encode_dev(inode->i_rdev);
++ 
++ 	else for (i = 0; i < 10; i++)
++ 		raw_inode->i_chunk[i] = fs421_inode->i2_data[i];
++ 	mark_buffer_dirty(bh);
++ 	/* End of splice from V2_fs421_iget() */
++ 
++ 	if (wbc->sync_mode == WB_SYNC_ALL && buffer_dirty(bh)) {
++ 		sync_dirty_buffer(bh);
++ 		if (buffer_req(bh) && !buffer_uptodate(bh)) {
++ 			printk("IO error syncing fs421 inode [%s:%08lx]\n",
++ 				inode->i_sb->s_id, inode->i_ino);
++ 			err = -EIO;
++ 		}
++ 	}
++ 	brelse (bh);
++ 	return err;
++ }
++ 
++ int fs421_getattr(struct vfsmount *mnt, struct dentry *dentry, struct kstat *stat)
++ {
++ 	struct super_block *sb = dentry->d_sb;
++ 	generic_fillattr(dentry->d_inode, stat);
++ 	/* Remove V1|V2 cond --jyp */
++ 	stat->blocks = (sb->s_blocksize / 512) * fs421_blocks(stat->size, sb);
++ 	stat->blksize = sb->s_blocksize;
++ 	return 0;
++ }
++ 
++ static struct dentry *fs421_mount(struct file_system_type *fs_type,
++ 	int flags, const char *dev_name, void *data)
++ {
++ 	return mount_bdev(fs_type, flags, dev_name, data, fs421_fill_super);
++ }
++ 
++ static struct file_system_type fs421_fs_type = {
++ 	.owner		= THIS_MODULE,
++ 	.name		= "fs421",
++ 	.mount		= fs421_mount,
++ 	.kill_sb	= kill_block_super,
++ 	.fs_flags	= FS_REQUIRES_DEV,
++ };
++ MODULE_ALIAS_FS("fs421");
++ 
++ static int __init init_fs421_fs(void)
++ {
++ 	int err = init_inodecache();
++ 	if (err)
++ 		goto out1;
++ 	err = register_filesystem(&fs421_fs_type);
++ 	if (err)
++ 		goto out;
++ 	return 0;
++ out:
++ 	destroy_inodecache();
++ out1:
++ 	return err;
++ }
++ 
++ static void __exit exit_fs421_fs(void)
++ {
++         unregister_filesystem(&fs421_fs_type);
++ 	destroy_inodecache();
++ }
++ 
++ module_init(init_fs421_fs)
++ module_exit(exit_fs421_fs)
++ MODULE_LICENSE("GPL");
++ 
+diff -rcP -X ignorelist.txt linux-3.12.9/fs/fs421/itree.c project2/fs/fs421/itree.c
+*** linux-3.12.9/fs/fs421/itree.c	1969-12-31 19:00:00.000000000 -0500
+--- project2/fs/fs421/itree.c	2017-11-29 13:26:17.830025831 -0500
+***************
+*** 0 ****
+--- 1,290 ----
++ /*
++  *  Modified from minix fs for use as exercise for UMBC CMSC421 OS course
++  *      by John Y. Park
++  * THIS FILE WAS PRETTY MUCH TOTALLY REWRITTEN!
++  *
++  *
++  * HINT-STUB: ONE OF THE TWO MAJOR FILES THAT NEED UPDATING
++  */
++ 
++ #include <linux/buffer_head.h>
++ #include "fs421.h"
++ 
++ enum {DIRECT = 10, DEPTH = 1};	/* No longer have triple indirect --jyp */
++ 
++ typedef u32 block_t;	/* 32 bit, host order */
++ 
++ static inline unsigned long block_to_cpu(block_t n)
++ {
++ 	return n;
++ }
++ 
++ static inline block_t cpu_to_block(unsigned long n)
++ {
++ 	return n;
++ }
++ 
++ static inline block_t *i_data(struct inode *inode)
++ {
++ 	return (block_t *)fs421_i(inode)->i2_data;
++ }
++ 
++ /*
++  * block_to_path():
++  *   Maps a file-relative block number to a inode chunk level,
++  *   and the offset within that chunk.
++  *   Kept name of original, since what the new function does is somewhat
++  *   similar to the old function, albeit simpler.
++  *
++  * Inputs:
++  *   inode -- inode to operate on; just used to get sb info.
++  *   block -- the file-relative block number to compute the path for
++  *
++  * Outputs:
++  *   offset -- block offset relative to chunk at returned level
++  * Return: level of chunk ptr, -1 on error
++  */
++ static int block_to_path(struct inode * inode, long block, int *offset)
++ {
++ 	char b[BDEVNAME_SIZE];
++ 	struct super_block *sb = inode->i_sb;
++ 	int level;
++ 
++ 	if (block < 0) {
++ 		printk("FS421-fs: block_to_path: block %ld < 0 on dev %s\n",
++ 			block, bdevname(sb->s_bdev, b));
++ 		return -1;
++ 	} else if ((u64)block * (u64)sb->s_blocksize >=
++ 			fs421_sb(sb)->s_max_size) {
++ 		if (printk_ratelimit())
++ 			printk("FS421-fs: block_to_path: "
++ 			       "block %ld too big on dev %s\n",
++ 				block, bdevname(sb->s_bdev, b));
++ 		return -1;
++ 	}
++ 
++ 	/*
++ 	 * HINT-STUB:
++ 	 * NEED TO ADD CODE HERE TO COMPUTE level AND offset, BASED
++ 	 * ON PARAM block
++ 	 * E.g.s:
++ 	 *   if request is for block# 0, return level=0, offset=0
++ 	 *   if request is for block# 1, return level=1, offset=0
++ 	 *   if request is for block# 2, return level=1, offset=1
++ 	 *   if request is for block# 3, return level=2, offset=0
++ 	 *    ... and so forth.
++ 	 *
++ 	 * THIS SHOULD BE ABOUT 4-5 LINES OF CODE
++ 	 */
++ 	int block_num = block + 1;
++ 	int count = 0;
++ 	while (block_num > 2) {
++ 	  block_num = block_num / 2;
++ 	  count += 1;
++ 	}
++ 	level = count;
++ 
++ 	*offset = block_num - ((2 << level) - 1);  /* Return by reference */
++ 	return level;
++ }
++ 
++ /*
++  * fs421_get_block():
++  *   Maps a file block offset to a disk zone# and fetches it. Works w/chunks.
++  *   Substantially simpler because we don't use indirect blocks.
++  * Inputs:
++  *   inode -- inode to fetch a data block for
++  *   block -- block offset in file to fetch
++  *   create -- flag to indicate we should grow file if request is beyond EOF
++  * Outputs:
++  *   bh -- buffer_head that is configured to point to data block in buffer
++  *     cache.
++  * Return:
++  *   0 if all ok; else -errno
++  */
++ 
++ int fs421_get_block(struct inode * inode, sector_t block,
++ 		       struct buffer_head *bh, int create)
++ {
++ 	int err = 0;
++ 	int offset;
++ 	int l;
++ 	int new_block = 0;
++ 	block_t *idata = i_data(inode);
++ 	int level = block_to_path(inode, block, &offset);
++ 
++ 	if (level < 0)
++ 		return -EIO;
++ 	else if (idata[level] == 0) {
++ 		if (!create)
++ 			return 0;
++ 		/*
++ 		printk("FS421-fs: get_block(create==1): l=%d, off=%d\n",
++ 		       level, offset);
++ 		*/
++ 		/* set flag to indicate we had to allocate a new block: */
++ 		new_block = 1;
++ 
++ 		/*
++ 		 * HINT-STUB:
++ 		 * NEED TO ADD CODE HERE TO EXTEND FILE IF NECESSARY:
++ 		 * You need to:
++ 		 * 1) See what level you have chunks allocated up to;
++ 		 *    (look for first zero idata[] entry--cannot use inode's
++ 		 *    size field, as it was already modified).
++ 		 * 2) Allocate chunks for all empty levels up to requested
++ 		 *    level (in "level", computed above)
++ 		 * 3) For each chunk, put starting block address into
++ 		 *    appropriate idata[] slot
++ 		 * 4) IMPORTANT: keep track of what you are allocating:
++ 		 *    on failure, MUST FREE UP WHAT YOU ADDED HERE SO FAR
++ 		 *    DURING THIS CALL (but not what was already there before)
++ 		 *
++ 		 * You will need to call:
++ 		 *   fs421_new_block(inode, size)
++ 		 * and possibly:
++ 		 *   fs421_free_block(inode, blocknum, size)
++ 		 *
++ 		 * (you will be writing these, too, in bitmap.c)
++ 		 *
++ 		 * Don't forget to set "err" if there was a problem
++ 		 *
++ 		 * THIS SHOULD BE ABOUT 8-10 LINES OF CODE
++ 		 */
++ 		
++ 
++ 
++ 		err = -ENOSPC; // set to a negative errno (-ENOSPC makes most sense)
++ 	}
++ 
++ 	if (!err) {
++ 		/* STUB: really should zero out all of the blocks in all
++ 		 * the chunks we allocated in this call */
++ 		if (new_block) {
++ 			set_buffer_new(bh);
++ 		}
++ 		map_bh(bh, inode->i_sb, idata[level] + offset);
++ 	}
++ 	return err;
++ }
++ 
++ /*
++  * free_data():
++  *   This function frees up chunks at levels beyond the end of a file.
++  *
++  * Inputs:
++  *   inode -- inode to free up data blocks on
++  *   trunc_start -- the level to start freeing up chunks from
++  */
++ static inline void free_data(struct inode *inode, int trunc_start)
++ {
++ 	block_t *idata = i_data(inode);
++ 	unsigned long nr;
++ 
++ 	/*
++ 	 * This helper function is called by fs421_truncate to free
++ 	 * up soon-to-be-unused chunks.  The parameter "trunc_start"
++ 	 * specifies the level at which to start freeing up chunks,
++ 	 * which are stored in idata[] (fetched above).
++ 	 * We have no indication of how many we were using previously,
++ 	 * so we will just have to loop over all idata[] entries
++ 	 * IMPORTANT: you MUST set the idata[] entries to 0 as you free
++ 	 * them up, since other functions (and this one, too) depend on
++ 	 * that!
++ 	 *
++ 	 * To free up the chunks, you should call:
++ 	 *   fs421_free_block(inode, blocknum, size)
++ 	 *
++ 	 * (you will be writing this, too, in bitmap.c)
++ 	 */
++ 	while (trunc_start < DIRECT) {
++ 		nr = block_to_cpu(idata[trunc_start]);
++ 		if (nr) {
++ 			idata[trunc_start] = 0;
++ 			fs421_free_block(inode, nr, trunc_start);
++ 		}
++ 		trunc_start++;
++ 	}
++ }
++ 
++ /*
++  * fs421_truncate():
++  *   This function is called for doing file truncation, either by file
++  *   "re-creation", or truncation syscall.  Rework of existing function.
++  * Inputs:
++  *   inode -- inode to free up data blocks on
++  *     note that inode->i_size has already been updated to indicate desired
++  *     new endpoint (so this is our actual implicit arg)
++  *
++  */
++ void fs421_truncate(struct inode * inode)
++ {
++ 	struct super_block *sb = inode->i_sb;
++ 	int offset;
++ 	int n, trunc_start;
++ 	long iblock;
++ 
++ 	if (!(S_ISREG(inode->i_mode) || S_ISDIR(inode->i_mode) || S_ISLNK(inode->i_mode)))
++ 		return;
++ 
++ 	/* Following gets addr of last block used, possibly -1 */
++ 	iblock = ((inode->i_size + sb->s_blocksize -1) >> sb->s_blocksize_bits)
++ 		- 1;
++ 
++ 	block_truncate_page(inode->i_mapping, inode->i_size, fs421_get_block);
++ 
++ 	if (iblock < 0)
++ 		trunc_start = 0;
++ 	else {
++ 		n = block_to_path(inode, iblock, &offset);
++ 		if (n < 0) /* block_to_path() already did kprint() */
++ 			return;
++ 		trunc_start = n + 1;
++ 	}
++ 	free_data(inode, trunc_start);
++ 	inode->i_mtime = inode->i_ctime = CURRENT_TIME_SEC;
++ 	mark_inode_dirty(inode);
++ }
++ 
++ /*
++  * fs421_release():  NEW FUNCTION
++  *   Hook for being called on last close of a file (this is best time
++  *   for truncating any excess allocations).
++  * Removed because this was made optional
++  */
++ int fs421_release(struct inode *inode, struct file *file)
++ {
++ 	printk("FS421-fs: release: called on i=%u, f=%u\n", inode, file);
++ 	/* Just for yucks, check that file->f_count is actually 0 */
++ 	return 0; /* doc says this value is ignored by VFS */
++ }
++ 
++ /*
++  * fs421_blocks():
++  *   Computes the actual number of blocks that would be used for a file
++  *   of a given size.  This takes overhead into account; in original MINIX,
++  *   we had to account for indirect blocks-of-pointers; for FS421, we have
++  *   to count any overallocations due to the binary buddy system.
++  *   Only used by the stat syscall, through fs421_getattr()
++  * Inputs:
++  *   size -- size, in BYTES, of our hypothetical file
++  *   sd -- superblock w/fs info to use in our calculations
++  */
++ unsigned fs421_blocks(loff_t size, struct super_block *sb)
++ {
++ 	int bs_diff_bits = BLOCK_SIZE_BITS - sb->s_blocksize_bits;
++ 	unsigned blocks, res, nlevels;
++ 
++ 	if (size == 0)
++ 		return 0;
++ 	blocks = (size + sb->s_blocksize - 1) >> (sb->s_blocksize_bits);
++ 	nlevels = fls(blocks);
++ 	res = (1 << nlevels) - 1;
++ 	/* Students might not do following, to change fs421 blocks to Linux
++ 	 * blocks--warn, but no deduction */
++ 	if (bs_diff_bits > 0)
++ 		res = DIV_ROUND_UP(res, 1 << bs_diff_bits);
++ 	else
++ 		res <<= -bs_diff_bits;
++ 	return res;
++ }
+diff -rcP -X ignorelist.txt linux-3.12.9/fs/fs421/Kconfig project2/fs/fs421/Kconfig
+*** linux-3.12.9/fs/fs421/Kconfig	1969-12-31 19:00:00.000000000 -0500
+--- project2/fs/fs421/Kconfig	2017-11-29 12:31:49.769475695 -0500
+***************
+*** 0 ****
+--- 1,17 ----
++ config FS421_FS
++ 	tristate "UMBC CMSC 421 file system support"
++ 	depends on BLOCK
++ 	help
++ 	  FS421 is a simplified file system implemented for Project 2
++ 	  for the UMBC course CMSC421: Operating Systems.
++ 	  While otherwise more minimal than the ext2 or even MINIX
++ 	  file systems, it has an interesting allocation strategy that
++ 	  uses a binary buddy algorithm and an excalating block ptr scheme.
++ 
++ 	  The file system type as used by mount(1), mount(2) and
++ 	  fstab(5) is 'fs421'
++ 
++ 	  To compile this as a module, choose M here: the module will be
++ 	  called fs421.  (In fact, for CMSC 421 students, testing the
++ 	  ability to load as a module is mandatory.)
++ 	  If unsure, say Y: live life on the edge!
+diff -rcP -X ignorelist.txt linux-3.12.9/fs/fs421/Makefile project2/fs/fs421/Makefile
+*** linux-3.12.9/fs/fs421/Makefile	1969-12-31 19:00:00.000000000 -0500
+--- project2/fs/fs421/Makefile	2017-11-29 12:31:49.769475695 -0500
+***************
+*** 0 ****
+--- 1,7 ----
++ #
++ # Makefile for CMSC 421 Project 2 file system
++ #
++ 
++ obj-$(CONFIG_FS421_FS) += fs421.o
++ 
++ fs421-objs := bitmap.o itree.o namei.o inode.o file.o dir.o
+diff -rcP -X ignorelist.txt linux-3.12.9/fs/fs421/namei.c project2/fs/fs421/namei.c
+*** linux-3.12.9/fs/fs421/namei.c	1969-12-31 19:00:00.000000000 -0500
+--- project2/fs/fs421/namei.c	2017-11-29 12:31:49.769475695 -0500
+***************
+*** 0 ****
+--- 1,273 ----
++ /*
++  *  linux/fs/fs421/namei.c
++  *
++  *  Copyright (C) 1991, 1992  Linus Torvalds
++  *
++  *  Modified from minix fs for use as exercise for UMBC CMSC421 OS course
++  *      by John Y. Park
++  */
++ 
++ #include "fs421.h"
++ 
++ static int add_nondir(struct dentry *dentry, struct inode *inode)
++ {
++ 	int err = fs421_add_link(dentry, inode);
++ 	if (!err) {
++ 		d_instantiate(dentry, inode);
++ 		return 0;
++ 	}
++ 	inode_dec_link_count(inode);
++ 	iput(inode);
++ 	return err;
++ }
++ 
++ static struct dentry *fs421_lookup(struct inode * dir, struct dentry *dentry, unsigned int flags)
++ {
++ 	struct inode * inode = NULL;
++ 	ino_t ino;
++ 
++ 	if (dentry->d_name.len > fs421_sb(dir->i_sb)->s_namelen)
++ 		return ERR_PTR(-ENAMETOOLONG);
++ 
++ 	ino = fs421_inode_by_name(dentry);
++ 	if (ino) {
++ 		inode = fs421_iget(dir->i_sb, ino);
++ 		if (IS_ERR(inode))
++ 			return ERR_CAST(inode);
++ 	}
++ 	d_add(dentry, inode);
++ 	return NULL;
++ }
++ 
++ static int fs421_mknod(struct inode * dir, struct dentry *dentry, umode_t mode, dev_t rdev)
++ {
++ 	int error;
++ 	struct inode *inode;
++ 
++ 	if (!old_valid_dev(rdev))
++ 		return -EINVAL;
++ 
++ 	inode = fs421_new_inode(dir, mode, &error);
++ 
++ 	if (inode) {
++ 		fs421_set_inode(inode, rdev);
++ 		mark_inode_dirty(inode);
++ 		error = add_nondir(dentry, inode);
++ 	}
++ 	return error;
++ }
++ 
++ static int fs421_tmpfile(struct inode *dir, struct dentry *dentry, umode_t mode)
++ {
++ 	int error;
++ 	struct inode *inode = fs421_new_inode(dir, mode, &error);
++ 	if (inode) {
++ 		fs421_set_inode(inode, 0);
++ 		mark_inode_dirty(inode);
++ 		d_tmpfile(dentry, inode);
++ 	}
++ 	return error;
++ }
++ 
++ static int fs421_create(struct inode *dir, struct dentry *dentry, umode_t mode,
++ 		bool excl)
++ {
++ 	return fs421_mknod(dir, dentry, mode, 0);
++ }
++ 
++ static int fs421_symlink(struct inode * dir, struct dentry *dentry,
++ 	  const char * symname)
++ {
++ 	int err = -ENAMETOOLONG;
++ 	int i = strlen(symname)+1;
++ 	struct inode * inode;
++ 
++ 	if (i > dir->i_sb->s_blocksize)
++ 		goto out;
++ 
++ 	inode = fs421_new_inode(dir, S_IFLNK | 0777, &err);
++ 	if (!inode)
++ 		goto out;
++ 
++ 	fs421_set_inode(inode, 0);
++ 	err = page_symlink(inode, symname, i);
++ 	if (err)
++ 		goto out_fail;
++ 
++ 	err = add_nondir(dentry, inode);
++ out:
++ 	return err;
++ 
++ out_fail:
++ 	inode_dec_link_count(inode);
++ 	iput(inode);
++ 	goto out;
++ }
++ 
++ static int fs421_link(struct dentry * old_dentry, struct inode * dir,
++ 	struct dentry *dentry)
++ {
++ 	struct inode *inode = old_dentry->d_inode;
++ 
++ 	inode->i_ctime = CURRENT_TIME_SEC;
++ 	inode_inc_link_count(inode);
++ 	ihold(inode);
++ 	return add_nondir(dentry, inode);
++ }
++ 
++ static int fs421_mkdir(struct inode * dir, struct dentry *dentry, umode_t mode)
++ {
++ 	struct inode * inode;
++ 	int err;
++ 
++ 	inode_inc_link_count(dir);
++ 
++ 	inode = fs421_new_inode(dir, S_IFDIR | mode, &err);
++ 	if (!inode)
++ 		goto out_dir;
++ 
++ 	fs421_set_inode(inode, 0);
++ 
++ 	inode_inc_link_count(inode);
++ 
++ 	err = fs421_make_empty(inode, dir);
++ 	if (err)
++ 		goto out_fail;
++ 
++ 	err = fs421_add_link(dentry, inode);
++ 	if (err)
++ 		goto out_fail;
++ 
++ 	d_instantiate(dentry, inode);
++ out:
++ 	return err;
++ 
++ out_fail:
++ 	inode_dec_link_count(inode);
++ 	inode_dec_link_count(inode);
++ 	iput(inode);
++ out_dir:
++ 	inode_dec_link_count(dir);
++ 	goto out;
++ }
++ 
++ static int fs421_unlink(struct inode * dir, struct dentry *dentry)
++ {
++ 	int err = -ENOENT;
++ 	struct inode * inode = dentry->d_inode;
++ 	struct page * page;
++ 	struct fs421_dir_entry * de;
++ 
++ 	de = fs421_find_entry(dentry, &page);
++ 	if (!de)
++ 		goto end_unlink;
++ 
++ 	err = fs421_delete_entry(de, page);
++ 	if (err)
++ 		goto end_unlink;
++ 
++ 	inode->i_ctime = dir->i_ctime;
++ 	inode_dec_link_count(inode);
++ end_unlink:
++ 	return err;
++ }
++ 
++ static int fs421_rmdir(struct inode * dir, struct dentry *dentry)
++ {
++ 	struct inode * inode = dentry->d_inode;
++ 	int err = -ENOTEMPTY;
++ 
++ 	if (fs421_empty_dir(inode)) {
++ 		err = fs421_unlink(dir, dentry);
++ 		if (!err) {
++ 			inode_dec_link_count(dir);
++ 			inode_dec_link_count(inode);
++ 		}
++ 	}
++ 	return err;
++ }
++ 
++ static int fs421_rename(struct inode * old_dir, struct dentry *old_dentry,
++ 			   struct inode * new_dir, struct dentry *new_dentry)
++ {
++ 	struct inode * old_inode = old_dentry->d_inode;
++ 	struct inode * new_inode = new_dentry->d_inode;
++ 	struct page * dir_page = NULL;
++ 	struct fs421_dir_entry * dir_de = NULL;
++ 	struct page * old_page;
++ 	struct fs421_dir_entry * old_de;
++ 	int err = -ENOENT;
++ 
++ 	old_de = fs421_find_entry(old_dentry, &old_page);
++ 	if (!old_de)
++ 		goto out;
++ 
++ 	if (S_ISDIR(old_inode->i_mode)) {
++ 		err = -EIO;
++ 		dir_de = fs421_dotdot(old_inode, &dir_page);
++ 		if (!dir_de)
++ 			goto out_old;
++ 	}
++ 
++ 	if (new_inode) {
++ 		struct page * new_page;
++ 		struct fs421_dir_entry * new_de;
++ 
++ 		err = -ENOTEMPTY;
++ 		if (dir_de && !fs421_empty_dir(new_inode))
++ 			goto out_dir;
++ 
++ 		err = -ENOENT;
++ 		new_de = fs421_find_entry(new_dentry, &new_page);
++ 		if (!new_de)
++ 			goto out_dir;
++ 		fs421_set_link(new_de, new_page, old_inode);
++ 		new_inode->i_ctime = CURRENT_TIME_SEC;
++ 		if (dir_de)
++ 			drop_nlink(new_inode);
++ 		inode_dec_link_count(new_inode);
++ 	} else {
++ 		err = fs421_add_link(new_dentry, old_inode);
++ 		if (err)
++ 			goto out_dir;
++ 		if (dir_de)
++ 			inode_inc_link_count(new_dir);
++ 	}
++ 
++ 	fs421_delete_entry(old_de, old_page);
++ 	mark_inode_dirty(old_inode);
++ 
++ 	if (dir_de) {
++ 		fs421_set_link(dir_de, dir_page, new_dir);
++ 		inode_dec_link_count(old_dir);
++ 	}
++ 	return 0;
++ 
++ out_dir:
++ 	if (dir_de) {
++ 		kunmap(dir_page);
++ 		page_cache_release(dir_page);
++ 	}
++ out_old:
++ 	kunmap(old_page);
++ 	page_cache_release(old_page);
++ out:
++ 	return err;
++ }
++ 
++ /*
++  * directories can handle most operations...
++  */
++ const struct inode_operations fs421_dir_inode_operations = {
++ 	.create		= fs421_create,
++ 	.lookup		= fs421_lookup,
++ 	.link		= fs421_link,
++ 	.unlink		= fs421_unlink,
++ 	.symlink	= fs421_symlink,
++ 	.mkdir		= fs421_mkdir,
++ 	.rmdir		= fs421_rmdir,
++ 	.mknod		= fs421_mknod,
++ 	.rename		= fs421_rename,
++ 	.getattr	= fs421_getattr,
++ 	.tmpfile	= fs421_tmpfile,
++ };
+diff -rcP -X ignorelist.txt linux-3.12.9/fs/Kconfig project2/fs/Kconfig
+*** linux-3.12.9/fs/Kconfig	2014-01-25 12:18:00.000000000 -0500
+--- project2/fs/Kconfig	2017-11-29 12:31:50.099478702 -0500
+***************
+*** 212,217 ****
+--- 212,218 ----
+  source "fs/exofs/Kconfig"
+  source "fs/f2fs/Kconfig"
+  source "fs/efivarfs/Kconfig"
++ source "fs/fs421/Kconfig"
+  
+  endif # MISC_FILESYSTEMS
+  
+diff -rcP -X ignorelist.txt linux-3.12.9/fs/Makefile project2/fs/Makefile
+*** linux-3.12.9/fs/Makefile	2014-01-25 12:18:00.000000000 -0500
+--- project2/fs/Makefile	2017-11-29 12:31:50.701484187 -0500
+***************
+*** 126,128 ****
+--- 126,129 ----
+  obj-$(CONFIG_CEPH_FS)		+= ceph/
+  obj-$(CONFIG_PSTORE)		+= pstore/
+  obj-$(CONFIG_EFIVAR_FS)		+= efivarfs/
++ obj-$(CONFIG_FS421_FS)		+= fs421/
+diff -rcP -X ignorelist.txt linux-3.12.9/Makefile project2/Makefile
+*** linux-3.12.9/Makefile	2014-01-25 12:18:00.000000000 -0500
+--- project2/Makefile	2017-11-29 12:32:15.892713826 -0500
+***************
+*** 1,7 ****
+  VERSION = 3
+  PATCHLEVEL = 12
+  SUBLEVEL = 9
+! EXTRAVERSION =
+  NAME = One Giant Leap for Frogkind
+  
+  # *DOCUMENTATION*
+--- 1,7 ----
+  VERSION = 3
+  PATCHLEVEL = 12
+  SUBLEVEL = 9
+! EXTRAVERSION = -ru14618-cs421project2
+  NAME = One Giant Leap for Frogkind
+  
+  # *DOCUMENTATION*
+diff -rcP -X ignorelist.txt linux-3.12.9/README-disk-images-and-tools.txt project2/README-disk-images-and-tools.txt
+*** linux-3.12.9/README-disk-images-and-tools.txt	1969-12-31 19:00:00.000000000 -0500
+--- project2/README-disk-images-and-tools.txt	2014-05-12 00:13:58.000000000 -0400
+***************
+*** 0 ****
+--- 1,111 ----
++ These are a collection of test filesystem images that you can use
++ to try out your new filesystem code, as well two programs that will
++ help you debug, maintain, and even create more of, these images.
++ 
++ ================================================================
++ 
++ First, there is a set of 4 newly-created filesystems: the general
++ naming convention is:
++ 
++    fs421-{size}-{type}.img
++ 
++ where {size} is either "sm" or "lg", for small and large, respectively,
++ and {type} is either "fract" or "contig", for fractured or contiguous.
++ The meanings of these types are:
++ 
++ small vs. large:
++ - The small files are what you should begin with: these are 100-block
++   partitions, with the 93-block data space we've talked about in class.
++   These should fit into any VM. The advantage to these files is that
++   their bitmaps do not span multiple buffer blocks, which simplifies things.
++ 
++ - The large files are 12000-block partitions, with 11000+ block data
++   regions, so the level 0 bitmap will span multiple buffer blocks,
++   meaning it will test that your code deals with the s_zmap[] array
++   of buffer_heads correctly. You might need to clear some room for these.
++   They are about 12MB each.
++ 
++ "fractured" vs. "contiguous":
++ - All functional filesystems have to have at least the root inode with
++   real content (the root dir), which takes a block. The fractured files
++   allocated this block from the start of the data region. This means
++   that the first big binary-buddy chunk is fragmented from the very start.
++   This is actually a Good Thing. It means that the bitmap as given will
++   have an available chunk at every single level, so if you just create
++   a single small file, it is guaranteed not to need any chunk-splitting,
++   and if you then free it back up, there will not be any coallescing,
++   so you can start off with an easy task.
++ 
++ - The contiguous versions were specially created to allocate the block
++   for the root inode from the END of the data region, which preserves
++   the maximum "chunkage" :-) So, it is a good way to test the splitting/
++   coalescing code.  Note that it is still not actually one solid
++   max-size chunk--there are some random pieces at the end of the
++   partition you have to use up first.
++ 
++ ---------------------------
++ 
++ Second, there are two images that come prepopulated with a bunch of
++ files of various sizes, to allow you to test your code in inode.c
++ and itree.c for accessing the data blocks in a file.  These images
++ are named:
++ 
++     fs421smwithfiles.img
++     fs421lgwithfiles.img
++ 
++ The "sm" and "lg" designate "small" and "large", as with the empty
++ filesystem images described earlier.
++ 
++ ================================================================
++ 
++ I have also provided two programs: mkfs.minix, and fsck.minix.
++ These are described below:
++ 
++ First, the filesytem-checking program: fsck.minix. This program will
++ scan a filesystem image or partition, and tell you if there are any
++ problems with the structure, such as bad binary buddy bitmap structures,
++ files that are using supposedly free blocks, etc.  To run it, first
++ unmount the filesystem (this is important!), then type:
++ 
++     ./fsck.minix -v -s -f test.img
++ 
++ The options are as follows:
++   "-v" means verbose, giving you additional helpful info;
++   "-s" prints out detailed superblock info;
++   "-f" means force a check
++        (fsck just exists if it thinks the fs has been cleanly unmounted.)
++ 
++ Note: after unmounting, you do not have to disable the loopback device:
++ just run fsck on the loopback device itself, as in the following:
++ 
++     ./fsck.minix -v -s -f /dev/loop0
++ 
++ This will save you the loopback dev teardown/recreate cycle.  However,
++ you should NOT run it on the underlying image file (*.img) while it
++ is being used on a loopback dev.
++ 
++ If there are any problems with your filesystem, after reporting
++ what's wrong, it will volunteer to fix them for you.  It is usually
++ fine to say "yes", but it might be better to just start with a
++ fresh copy of the .img file instead.
++ 
++ =====
++ 
++ mkfs.minix is a program that takes a blank partition (or a blank file),
++ and structures it into a properly-formatted FS421 filesystem.
++ 
++     dd if=/dev/true of=test-partition.img bs=1024 count=100
++     ./mkfs.minix test-partition.img
++ 
++ This will create a 100K filesystem image in a file named "test-partition.img"
++ 
++ It can even create pre-populated filesystems, by using:
++ 
++     ./mkfs.minix -t test-partition-with-files.img
++ 
++ The "-t" option tells it to create a bunch of initial test files of
++ varying sizes on the filesystem.  That's how the images named
++ "*-with-files"  mentioned above were created.
++ 
++ (I am working on a trick to try to let you create mega-partitions
++ (with the resulting huge bitmaps) w/o blowing your disk space.)

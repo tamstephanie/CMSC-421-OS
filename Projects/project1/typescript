@@ -1,0 +1,814 @@
+Script started on Wed 08 Nov 2017 03:35:36 AM EST
+]0;stephanie@linux421-ru14618:/usr/src/project1[?1034h[stephanie@linux421-ru14618 project1]$ uname -s[Ka
+Linux linux421-ru14618 3.12.9-ru14618-cs421project1 #15 SMP Wed Nov 8 02:14:32 EST 2017 i686 i686 i386 GNU/Linux
+]0;stephanie@linux421-ru14618:/usr/src/project1[stephanie@linux421-ru14618 project1]$ cd[K[Kc[K
+]0;stephanie@linux421-ru14618:/usr/src/project1[stephanie@linux421-ru14618 project1]$ cd driver
+]0;stephanie@linux421-ru14618:/usr/src/project1/driver[stephanie@linux421-ru14618 driver]$ ls
+Makefile  [0m[38;5;27msrc[0m  [38;5;34mtest[0m  test.c  test_fifo.c
+]0;stephanie@linux421-ru14618:/usr/src/project1/driver[stephanie@linux421-ru14618 driver]$ make test
+cc -g -Wall -ansi   -c -o test.o test.c
+test.c: In function ‘enqueue421’:
+test.c:22:5: warning: field precision specifier ‘.*’ expects argument of type ‘int’, but argument 3 has type ‘long int’ [-Wformat]
+test.c:22:5: warning: format ‘%s’ expects argument of type ‘char *’, but argument 4 has type ‘void *’ [-Wformat]
+test.c:22:5: warning: format ‘%d’ expects argument of type ‘int’, but argument 5 has type ‘long int’ [-Wformat]
+test.c:25:5: warning: format ‘%d’ expects argument of type ‘int’, but argument 2 has type ‘long int’ [-Wformat]
+test.c: In function ‘dequeue421’:
+test.c:37:5: warning: format ‘%d’ expects argument of type ‘int’, but argument 3 has type ‘long int’ [-Wformat]
+test.c:40:5: warning: format ‘%d’ expects argument of type ‘int’, but argument 2 has type ‘long int’ [-Wformat]
+test.c: In function ‘peekLen421’:
+test.c:55:5: warning: format ‘%d’ expects argument of type ‘int’, but argument 2 has type ‘long int’ [-Wformat]
+test.c: In function ‘queueLen421’:
+test.c:70:5: warning: format ‘%d’ expects argument of type ‘int’, but argument 2 has type ‘long int’ [-Wformat]
+test.c: In function ‘clearQueue421’:
+test.c:85:5: warning: format ‘%d’ expects argument of type ‘int’, but argument 2 has type ‘long int’ [-Wformat]
+test.c: In function ‘main’:
+test.c:107:5: warning: implicit declaration of function ‘exit’ [-Wimplicit-function-declaration]
+test.c:107:5: warning: incompatible implicit declaration of built-in function ‘exit’ [enabled by default]
+test.c:111:3: warning: implicit declaration of function ‘atoi’ [-Wimplicit-function-declaration]
+test.c:240:5: warning: incompatible implicit declaration of built-in function ‘exit’ [enabled by default]
+gcc -g -Wall -ansi test.c -o test
+test.c: In function ‘enqueue421’:
+test.c:22:5: warning: field precision specifier ‘.*’ expects argument of type ‘int’, but argument 3 has type ‘long int’ [-Wformat]
+test.c:22:5: warning: format ‘%s’ expects argument of type ‘char *’, but argument 4 has type ‘void *’ [-Wformat]
+test.c:22:5: warning: format ‘%d’ expects argument of type ‘int’, but argument 5 has type ‘long int’ [-Wformat]
+test.c:25:5: warning: format ‘%d’ expects argument of type ‘int’, but argument 2 has type ‘long int’ [-Wformat]
+test.c: In function ‘dequeue421’:
+test.c:37:5: warning: format ‘%d’ expects argument of type ‘int’, but argument 3 has type ‘long int’ [-Wformat]
+test.c:40:5: warning: format ‘%d’ expects argument of type ‘int’, but argument 2 has type ‘long int’ [-Wformat]
+test.c: In function ‘peekLen421’:
+test.c:55:5: warning: format ‘%d’ expects argument of type ‘int’, but argument 2 has type ‘long int’ [-Wformat]
+test.c: In function ‘queueLen421’:
+test.c:70:5: warning: format ‘%d’ expects argument of type ‘int’, but argument 2 has type ‘long int’ [-Wformat]
+test.c: In function ‘clearQueue421’:
+test.c:85:5: warning: format ‘%d’ expects argument of type ‘int’, but argument 2 has type ‘long int’ [-Wformat]
+test.c: In function ‘main’:
+test.c:107:5: warning: implicit declaration of function ‘exit’ [-Wimplicit-function-declaration]
+test.c:107:5: warning: incompatible implicit declaration of built-in function ‘exit’ [enabled by default]
+test.c:111:3: warning: implicit declaration of function ‘atoi’ [-Wimplicit-function-declaration]
+test.c:240:5: warning: incompatible implicit declaration of built-in function ‘exit’ [enabled by default]
+]0;stephanie@linux421-ru14618:/usr/src/project1/driver[stephanie@linux421-ru14618 driver]$ clear
+[3;J[H[2J]0;stephanie@linux421-ru14618:/usr/src/project1/driver[stephanie@linux421-ru14618 driver]$ ./test 0
+BEGIN TEST FILE
+----------- VALID INPUT TEST -----------
+
+Round 1: Single enqueue and dequeue
+  enqueue421(data=0x8049270 ("CMSC 421: Operating Systems"), len=27): returned 0
+  queueLen421(): returned 1
+  peekLen421(): returned 27
+  dequeue421(data=0xbfee0253, len=512): returned 0
+  Expected "CMSC 421: Operating Systems"; Got "CMSC 421: Operating Systems"
+  queueLen421(): returned 0
+  clearQueue421(): returned 0
+  Should see error:  peekLen421(): returned -1; ERR:: No data available
+
+Round 2: Multiple enqueues and dequeues w/ different message sizes
+  enqueue421(data=0xbfee0454 ("Ltr A"), len=5): returned 0
+  enqueue421(data=0xbfee0654 ("Ltr AB"), len=6): returned 0
+  enqueue421(data=0xbfee0854 ("Ltr ABC"), len=7): returned 0
+  enqueue421(data=0xbfee0a54 ("Ltr ABCD"), len=8): returned 0
+  enqueue421(data=0xbfee0c54 ("Ltr ABCDE"), len=9): returned 0
+  enqueue421(data=0xbfee0e54 ("Ltr ABCDEF"), len=10): returned 0
+  enqueue421(data=0xbfee1054 ("Ltr ABCDEFG"), len=11): returned 0
+  enqueue421(data=0xbfee1254 ("Ltr ABCDEFGH"), len=12): returned 0
+  queueLen421(): returned 8
+  Should see len=5  peekLen421(): returned 5
+  dequeue421(data=0xbfee0253, len=512): returned 0
+  Expected "Ltr A"; Got "Ltr A"
+  queueLen421(): returned 7
+  Should see len=6  peekLen421(): returned 6
+  dequeue421(data=0xbfee0253, len=512): returned 0
+  Expected "Ltr AB"; Got "Ltr AB"
+  queueLen421(): returned 6
+  Should see len=7  peekLen421(): returned 7
+  dequeue421(data=0xbfee0253, len=512): returned 0
+  Expected "Ltr ABC"; Got "Ltr ABC"
+  queueLen421(): returned 5
+  Should see len=8  peekLen421(): returned 8
+  dequeue421(data=0xbfee0253, len=512): returned 0
+  Expected "Ltr ABCD"; Got "Ltr ABCD"
+  queueLen421(): returned 4
+  Should see len=9  peekLen421(): returned 9
+  dequeue421(data=0xbfee0253, len=512): returned 0
+  Expected "Ltr ABCDE"; Got "Ltr ABCDE"
+  queueLen421(): returned 3
+  Should see len=10  peekLen421(): returned 10
+  dequeue421(data=0xbfee0253, len=512): returned 0
+  Expected "Ltr ABCDEF"; Got "Ltr ABCDEF"
+  queueLen421(): returned 2
+  Should see len=11  peekLen421(): returned 11
+  dequeue421(data=0xbfee0253, len=512): returned 0
+  Expected "Ltr ABCDEFG"; Got "Ltr ABCDEFG"
+  queueLen421(): returned 1
+  Should see len=12  peekLen421(): returned 12
+  dequeue421(data=0xbfee0253, len=512): returned 0
+  Expected "Ltr ABCDEFGH"; Got "Ltr ABCDEFGH"
+  queueLen421(): returned 0
+  Should see error:  peekLen421(): returned -1; ERR:: No data available
+  enqueue421(data=0x8049384 ("CMSC 421 Operating Systems Project 1"), len=36): returned 0
+  enqueue421(data=0x8049384 ("CMSC 421 Operating Systems Project 1"), len=36): returned 0
+  enqueue421(data=0x8049384 ("CMSC 421 Operating Systems Project 1"), len=36): returned 0
+  enqueue421(data=0x8049384 ("CMSC 421 Operating Systems Project 1"), len=36): returned 0
+  enqueue421(data=0x8049384 ("CMSC 421 Operating Systems Project 1"), len=36): returned 0
+queuelen should be 5:  queueLen421(): returned 5
+  dequeue421(data=0xbfee0253, len=512): returned 0
+  clearQueue421(): returned 0
+queuelen should be 0:  queueLen421(): returned 0
+dequeue should fail:  dequeue421(data=0xbfee0253, len=512): returned -1; ERR:: No data available
+
+Round 3: Multiple enqueues and dequeues switching back and forth
+  enqueue421(data=0x804942e ("CMSC 421 Operating Systems"), len=27): returned 0
+  enqueue421(data=0x8049449 ("Professor: John Park"), len=20): returned 0
+  enqueue421(data=0x804945e ("TA: Leslie McAdoo"), len=17): returned 0
+queuelen should be 3:  queueLen421(): returned 3
+  peekLen421(): returned 27
+  dequeue421(data=0xbfee0253, len=512): returned 0
+  dequeue421(data=0xbfee0253, len=512): returned 0
+  Expected "Professor: John Park"; Got "Professor: John Park"
+queuelen should be 1:  queueLen421(): returned 1
+  peekLen421(): returned 17
+  enqueue421(data=0x80494ca ("Student: Stephanie Tam"), len=22): returned 0
+  enqueue421(data=0x80494e1 ("Student: Veronica Clements"), len=26): returned 0
+queuelen should be 3:  queueLen421(): returned 3
+  clearQueue421(): returned 0
+queuelen should be 0:  queueLen421(): returned 0
+
+Tests complete.
+
+--------- END VALID INPUT TEST ---------
+
+END TEST FILE
+]0;stephanie@linux421-ru14618:/usr/src/project1/driver[stephanie@linux421-ru14618 driver]$ 
+]0;stephanie@linux421-ru14618:/usr/src/project1/driver[stephanie@linux421-ru14618 driver]$ 
+]0;stephanie@linux421-ru14618:/usr/src/project1/driver[stephanie@linux421-ru14618 driver]$ ./test [K[K[K[K[K[K[Kdmesg -k
+[    0.000000] Initializing cgroup subsys cpuset
+[    0.000000] Initializing cgroup subsys cpu
+[    0.000000] Initializing cgroup subsys cpuacct
+[    0.000000] Linux version 3.12.9-ru14618-cs421project1 (root@linux421-ru14618) (gcc version 4.7.2 20121109 (Red Hat 4.7.2-8) (GCC) ) #15 SMP Wed Nov 8 02:14:32 EST 2017
+[    0.000000] e820: BIOS-provided physical RAM map:
+[    0.000000] BIOS-e820: [mem 0x0000000000000000-0x000000000009fbff] usable
+[    0.000000] BIOS-e820: [mem 0x000000000009fc00-0x000000000009ffff] reserved
+[    0.000000] BIOS-e820: [mem 0x00000000000f0000-0x00000000000fffff] reserved
+[    0.000000] BIOS-e820: [mem 0x0000000000100000-0x000000003ffeffff] usable
+[    0.000000] BIOS-e820: [mem 0x000000003fff0000-0x000000003fffffff] ACPI data
+[    0.000000] BIOS-e820: [mem 0x00000000fec00000-0x00000000fec00fff] reserved
+[    0.000000] BIOS-e820: [mem 0x00000000fee00000-0x00000000fee00fff] reserved
+[    0.000000] BIOS-e820: [mem 0x00000000fffc0000-0x00000000ffffffff] reserved
+[    0.000000] Notice: NX (Execute Disable) protection missing in CPU!
+[    0.000000] SMBIOS 2.5 present.
+[    0.000000] DMI: innotek GmbH VirtualBox/VirtualBox, BIOS VirtualBox 12/01/2006
+[    0.000000] e820: update [mem 0x00000000-0x00000fff] usable ==> reserved
+[    0.000000] e820: remove [mem 0x000a0000-0x000fffff] usable
+[    0.000000] e820: last_pfn = 0x3fff0 max_arch_pfn = 0x100000
+[    0.000000] MTRR default type: uncachable
+[    0.000000] MTRR variable ranges disabled:
+[    0.000000] x86 PAT enabled: cpu 0, old 0x7040600070406, new 0x7010600070106
+[    0.000000] CPU MTRRs all blank - virtualized system.
+[    0.000000] Scanning 1 areas for low memory corruption
+[    0.000000] initial memory mapped: [mem 0x00000000-0x01ffffff]
+[    0.000000] Base memory trampoline at [c009b000] 9b000 size 16384
+[    0.000000] init_memory_mapping: [mem 0x00000000-0x000fffff]
+[    0.000000]  [mem 0x00000000-0x000fffff] page 4k
+[    0.000000] init_memory_mapping: [mem 0x36c00000-0x36ffffff]
+[    0.000000]  [mem 0x36c00000-0x36ffffff] page 2M
+[    0.000000] init_memory_mapping: [mem 0x30000000-0x36bfffff]
+[    0.000000]  [mem 0x30000000-0x36bfffff] page 2M
+[    0.000000] init_memory_mapping: [mem 0x00100000-0x2fffffff]
+[    0.000000]  [mem 0x00100000-0x003fffff] page 4k
+[    0.000000]  [mem 0x00400000-0x2fffffff] page 2M
+[    0.000000] init_memory_mapping: [mem 0x37000000-0x377fdfff]
+[    0.000000]  [mem 0x37000000-0x373fffff] page 2M
+[    0.000000]  [mem 0x37400000-0x377fdfff] page 4k
+[    0.000000] BRK [0x01aad000, 0x01aadfff] PGTABLE
+[    0.000000] RAMDISK: [mem 0x37040000-0x37817fff]
+[    0.000000] Allocated new RAMDISK: [mem 0x36868000-0x3703f55b]
+[    0.000000] Move RAMDISK from [mem 0x37040000-0x3781755b] to [mem 0x36868000-0x3703f55b]
+[    0.000000] ACPI: RSDP 000e0000 00024 (v02 VBOX  )
+[    0.000000] ACPI: XSDT 3fff0030 00034 (v01 VBOX   VBOXXSDT 00000001 ASL  00000061)
+[    0.000000] ACPI: FACP 3fff00f0 000F4 (v04 VBOX   VBOXFACP 00000001 ASL  00000061)
+[    0.000000] ACPI: DSDT 3fff0410 021FF (v02 VBOX   VBOXBIOS 00000002 INTL 20100528)
+[    0.000000] ACPI: FACS 3fff0200 00040
+[    0.000000] ACPI: SSDT 3fff0240 001CC (v01 VBOX   VBOXCPUT 00000002 INTL 20100528)
+[    0.000000] 135MB HIGHMEM available.
+[    0.000000] 887MB LOWMEM available.
+[    0.000000]   mapped low ram: 0 - 377fe000
+[    0.000000]   low ram: 0 - 377fe000
+[    0.000000] BRK [0x01aae000, 0x01aaefff] PGTABLE
+[    0.000000] Zone ranges:
+[    0.000000]   DMA      [mem 0x00001000-0x00ffffff]
+[    0.000000]   Normal   [mem 0x01000000-0x377fdfff]
+[    0.000000]   HighMem  [mem 0x377fe000-0x3ffeffff]
+[    0.000000] Movable zone start for each node
+[    0.000000] Early memory node ranges
+[    0.000000]   node   0: [mem 0x00001000-0x0009efff]
+[    0.000000]   node   0: [mem 0x00100000-0x3ffeffff]
+[    0.000000] On node 0 totalpages: 262030
+[    0.000000] free_area_init_node: node 0, pgdat c1941500, node_mem_map f6068020
+[    0.000000]   DMA zone: 32 pages used for memmap
+[    0.000000]   DMA zone: 0 pages reserved
+[    0.000000]   DMA zone: 3998 pages, LIFO batch:0
+[    0.000000]   Normal zone: 1744 pages used for memmap
+[    0.000000]   Normal zone: 223230 pages, LIFO batch:31
+[    0.000000]   HighMem zone: 272 pages used for memmap
+[    0.000000]   HighMem zone: 34802 pages, LIFO batch:7
+[    0.000000] Using APIC driver default
+[    0.000000] ACPI: PM-Timer IO Port: 0x4008
+[    0.000000] smpboot: Allowing 1 CPUs, 0 hotplug CPUs
+[    0.000000] Found and enabled local APIC!
+[    0.000000] nr_irqs_gsi: 16
+[    0.000000] PM: Registered nosave memory: [mem 0x0009f000-0x0009ffff]
+[    0.000000] PM: Registered nosave memory: [mem 0x000a0000-0x000effff]
+[    0.000000] PM: Registered nosave memory: [mem 0x000f0000-0x000fffff]
+[    0.000000] e820: [mem 0x40000000-0xfebfffff] available for PCI devices
+[    0.000000] setup_percpu: NR_CPUS:8 nr_cpumask_bits:8 nr_cpu_ids:1 nr_node_ids:1
+[    0.000000] PERCPU: Embedded 13 pages/cpu @f77ea000 s31648 r0 d21600 u53248
+[    0.000000] pcpu-alloc: s31648 r0 d21600 u53248 alloc=13*4096
+[    0.000000] pcpu-alloc: [0] 0 
+[    0.000000] Built 1 zonelists in Zone order, mobility grouping on.  Total pages: 260254
+[    0.000000] Kernel command line: BOOT_IMAGE=/vmlinuz-3.12.9-ru14618-cs421project1 root=/dev/mapper/fedora-root ro rd.lvm.lv=fedora/swap rd.md=0 rd.dm=0 rd.luks=0 vconsole.keymap=us rd.lvm.lv=fedora/root rhgb quiet LANG=en_US.UTF-8
+[    0.000000] PID hash table entries: 4096 (order: 2, 16384 bytes)
+[    0.000000] Dentry cache hash table entries: 131072 (order: 7, 524288 bytes)
+[    0.000000] Inode-cache hash table entries: 65536 (order: 6, 262144 bytes)
+[    0.000000] Initializing CPU#0
+[    0.000000] xsave: enabled xstate_bv 0x7, cntxt size 0x440
+[    0.000000] Initializing HighMem for node 0 (000377fe:0003fff0)
+[    0.000000] Memory: 1020004K/1048120K available (6991K kernel code, 453K rwdata, 2100K rodata, 612K init, 704K bss, 28116K reserved, 139208K highmem)
+[    0.000000] virtual kernel memory layout:
+    fixmap  : 0xfff15000 - 0xfffff000   ( 936 kB)
+    pkmap   : 0xff800000 - 0xffc00000   (4096 kB)
+    vmalloc : 0xf7ffe000 - 0xff7fe000   ( 120 MB)
+    lowmem  : 0xc0000000 - 0xf77fe000   ( 887 MB)
+      .init : 0xc1954000 - 0xc19ed000   ( 612 kB)
+      .data : 0xc16d40fb - 0xc1953700   (2557 kB)
+      .text : 0xc1000000 - 0xc16d40fb   (6992 kB)
+[    0.000000] Checking if this processor honours the WP bit even in supervisor mode...Ok.
+[    0.000000] SLUB: HWalign=64, Order=0-3, MinObjects=0, CPUs=1, Nodes=1
+[    0.000000] Hierarchical RCU implementation.
+[    0.000000] 	RCU restricting CPUs from NR_CPUS=8 to nr_cpu_ids=1.
+[    0.000000] NR_IRQS:2304 nr_irqs:256 16
+[    0.000000] CPU 0 irqstacks, hard=f5c08000 soft=f5c0a000
+[    0.000000] Console: colour VGA+ 80x25
+[    0.000000] console [tty0] enabled
+[    0.000000] tsc: Fast TSC calibration failed
+[    0.004000] tsc: Unable to calibrate against PIT
+[    0.004000] tsc: using PMTIMER reference calibration
+[    0.004000] tsc: Detected 2495.886 MHz processor
+[    0.000001] Calibrating delay loop (skipped), value calculated using timer frequency.. 4991.77 BogoMIPS (lpj=2495886)
+[    0.000003] pid_max: default: 32768 minimum: 301
+[    0.000027] Security Framework initialized
+[    0.000029] SELinux:  Initializing.
+[    0.000034] SELinux:  Starting in permissive mode
+[    0.000039] Mount-cache hash table entries: 512
+[    0.000154] Initializing cgroup subsys freezer
+[    0.000390] CPU: Physical Processor ID: 0
+[    0.004569] mce: CPU supports 0 MCE banks
+[    0.004625] Last level iTLB entries: 4KB 0, 2MB 0, 4MB 0
+Last level dTLB entries: 4KB 64, 2MB 0, 4MB 0
+tlb_flushall_shift: 6
+[    0.042690] Freeing SMP alternatives memory: 28K (c19ed000 - c19f4000)
+[    0.043410] ACPI: Core revision 20130725
+[    0.043689] ACPI: All ACPI Tables successfully acquired
+[    0.044222] ACPI: setting ELCR to 0200 (from 0e00)
+[    0.044801] smpboot: weird, boot CPU (#0) not listed by the BIOS
+[    0.044814] smpboot: SMP motherboard not detected
+[    0.044816] Enabling APIC mode:  Flat.  Using 0 I/O APICs
+[    0.147354] smpboot: SMP disabled
+[    0.147419] Performance Events: unsupported p6 CPU model 78 no PMU driver, software events only.
+[    0.148068] Brought up 1 CPUs
+[    0.148070] smpboot: Total of 1 processors activated (4991.77 BogoMIPS)
+[    0.148142] devtmpfs: initialized
+[    0.148536] RTC time:  7:15:17, date: 11/08/17
+[    0.148552] NET: Registered protocol family 16
+[    0.148762] kworker/u2:0 (14) used greatest stack depth: 7452 bytes left
+[    0.148840] kworker/u2:0 (20) used greatest stack depth: 7416 bytes left
+[    0.148854] kworker/u2:0 (21) used greatest stack depth: 7120 bytes left
+[    0.148884] cpuidle: using governor ladder
+[    0.148885] cpuidle: using governor menu
+[    0.149017] ACPI: bus type PCI registered
+[    0.149205] PCI: PCI BIOS revision 2.10 entry at 0xfda26, last bus=0
+[    0.149206] PCI: Using configuration type 1 for base access
+[    0.149399] kworker/u2:0 (30) used greatest stack depth: 6968 bytes left
+[    0.153978] bio: create slab <bio-0> at 0
+[    0.154038] ACPI: Added _OSI(Module Device)
+[    0.154039] ACPI: Added _OSI(Processor Device)
+[    0.154040] ACPI: Added _OSI(3.0 _SCP Extensions)
+[    0.154041] ACPI: Added _OSI(Processor Aggregator Device)
+[    0.154723] ACPI: EC: Look up EC in DSDT
+[    0.154991] ACPI: Executed 1 blocks of module-level executable AML code
+[    0.156756] ACPI: Interpreter enabled
+[    0.156765] ACPI Exception: AE_NOT_FOUND, While evaluating Sleep State [\_S1_] (20130725/hwxface-571)
+[    0.156768] ACPI Exception: AE_NOT_FOUND, While evaluating Sleep State [\_S2_] (20130725/hwxface-571)
+[    0.156770] ACPI Exception: AE_NOT_FOUND, While evaluating Sleep State [\_S3_] (20130725/hwxface-571)
+[    0.156771] ACPI Exception: AE_NOT_FOUND, While evaluating Sleep State [\_S4_] (20130725/hwxface-571)
+[    0.156775] ACPI: (supports S0 S5)
+[    0.156776] ACPI: Using PIC for interrupt routing
+[    0.156937] PCI: Ignoring host bridge windows from ACPI; if necessary, use "pci=use_crs" and report a bug
+[    0.156963] ACPI: No dock devices found.
+[    0.163182] ACPI: PCI Root Bridge [PCI0] (domain 0000 [bus 00-ff])
+[    0.163202] acpi PNP0A03:00: Unable to request _OSC control (_OSC support mask: 0x0e)
+[    0.163504] acpi PNP0A03:00: host bridge window [io  0x0000-0x0cf7] (ignored)
+[    0.163506] acpi PNP0A03:00: host bridge window [io  0x0d00-0xffff] (ignored)
+[    0.163507] acpi PNP0A03:00: host bridge window [mem 0x000a0000-0x000bffff] (ignored)
+[    0.163509] acpi PNP0A03:00: host bridge window [mem 0x40000000-0xffdfffff] (ignored)
+[    0.163510] PCI: root bus 00: using default resources
+[    0.163512] acpi PNP0A03:00: fail to add MMCONFIG information, can't access extended PCI configuration space under this bridge.
+[    0.163541] PCI host bridge to bus 0000:00
+[    0.163543] pci_bus 0000:00: root bus resource [bus 00-ff]
+[    0.163544] pci_bus 0000:00: root bus resource [io  0x0000-0xffff]
+[    0.163545] pci_bus 0000:00: root bus resource [mem 0x00000000-0xffffffff]
+[    0.163674] pci 0000:00:00.0: [8086:1237] type 00 class 0x060000
+[    0.165204] pci 0000:00:01.0: [8086:7000] type 00 class 0x060100
+[    0.167345] pci 0000:00:01.1: [8086:7111] type 00 class 0x01018a
+[    0.168528] pci 0000:00:01.1: reg 0x20: [io  0xd000-0xd00f]
+[    0.169578] pci 0000:00:02.0: [80ee:beef] type 00 class 0x030000
+[    0.171071] pci 0000:00:02.0: reg 0x10: [mem 0xe0000000-0xe1ffffff pref]
+[    0.178386] pci 0000:00:03.0: [8086:100e] type 00 class 0x020000
+[    0.179343] pci 0000:00:03.0: reg 0x10: [mem 0xf0000000-0xf001ffff]
+[    0.181242] pci 0000:00:03.0: reg 0x18: [io  0xd010-0xd017]
+[    0.185014] pci 0000:00:04.0: [80ee:cafe] type 00 class 0x088000
+[    0.186213] pci 0000:00:04.0: reg 0x10: [io  0xd020-0xd03f]
+[    0.186981] pci 0000:00:04.0: reg 0x14: [mem 0xf0400000-0xf07fffff]
+[    0.187698] pci 0000:00:04.0: reg 0x18: [mem 0xf0800000-0xf0803fff pref]
+[    0.191273] pci 0000:00:05.0: [8086:2415] type 00 class 0x040100
+[    0.191616] pci 0000:00:05.0: reg 0x10: [io  0xd100-0xd1ff]
+[    0.191827] pci 0000:00:05.0: reg 0x14: [io  0xd200-0xd23f]
+[    0.193573] pci 0000:00:06.0: [106b:003f] type 00 class 0x0c0310
+[    0.194568] pci 0000:00:06.0: reg 0x10: [mem 0xf0804000-0xf0804fff]
+[    0.200367] pci 0000:00:07.0: [8086:7113] type 00 class 0x068000
+[    0.202123] pci 0000:00:07.0: quirk: [io  0x4000-0x403f] claimed by PIIX4 ACPI
+[    0.202157] pci 0000:00:07.0: quirk: [io  0x4100-0x410f] claimed by PIIX4 SMB
+[    0.203088] pci 0000:00:0d.0: [8086:2829] type 00 class 0x010601
+[    0.204277] pci 0000:00:0d.0: reg 0x10: [io  0xd240-0xd247]
+[    0.206056] pci 0000:00:0d.0: reg 0x18: [io  0xd250-0xd257]
+[    0.207990] pci 0000:00:0d.0: reg 0x20: [io  0xd260-0xd26f]
+[    0.208649] pci 0000:00:0d.0: reg 0x24: [mem 0xf0806000-0xf0807fff]
+[    0.210761] pci_bus 0000:00: on NUMA node 0
+[    0.212122] ACPI: PCI Interrupt Link [LNKA] (IRQs 5 9 10 *11)
+[    0.212357] ACPI: PCI Interrupt Link [LNKB] (IRQs 5 9 10 *11)
+[    0.212517] ACPI: PCI Interrupt Link [LNKC] (IRQs 5 9 *10 11)
+[    0.212675] ACPI: PCI Interrupt Link [LNKD] (IRQs 5 *9 10 11)
+[    0.213024] ACPI: Enabled 2 GPEs in block 00 to 07
+[    0.213029] ACPI: \_SB_.PCI0: notify handler is installed
+[    0.213038] Found 1 acpi root devices
+[    0.213207] vgaarb: device added: PCI:0000:00:02.0,decodes=io+mem,owns=io+mem,locks=none
+[    0.213229] vgaarb: loaded
+[    0.213230] vgaarb: bridge control possible 0000:00:02.0
+[    0.213345] SCSI subsystem initialized
+[    0.213400] libata version 3.00 loaded.
+[    0.213461] ACPI: bus type USB registered
+[    0.213515] usbcore: registered new interface driver usbfs
+[    0.213529] usbcore: registered new interface driver hub
+[    0.213546] usbcore: registered new device driver usb
+[    0.213604] pps_core: LinuxPPS API ver. 1 registered
+[    0.213605] pps_core: Software ver. 5.3.6 - Copyright 2005-2007 Rodolfo Giometti <giometti@linux.it>
+[    0.213616] PTP clock support registered
+[    0.213704] Advanced Linux Sound Architecture Driver Initialized.
+[    0.213705] PCI: Using ACPI for IRQ routing
+[    0.213707] PCI: pci_cache_line_size set to 64 bytes
+[    0.214348] e820: reserve RAM buffer [mem 0x0009fc00-0x0009ffff]
+[    0.214356] e820: reserve RAM buffer [mem 0x3fff0000-0x3fffffff]
+[    0.214543] cfg80211: Calling CRDA to update world regulatory domain
+[    0.214664] NetLabel: Initializing
+[    0.214665] NetLabel:  domain hash size = 128
+[    0.214666] NetLabel:  protocols = UNLABELED CIPSOv4
+[    0.214678] NetLabel:  unlabeled traffic allowed by default
+[    0.215042] Switched to clocksource refined-jiffies
+[    0.218324] pnp: PnP ACPI init
+[    0.218332] ACPI: bus type PNP registered
+[    0.218382] pnp 00:00: Plug and Play ACPI device, IDs PNP0303 (active)
+[    0.218389] pnp 00:01: [dma 4]
+[    0.218407] pnp 00:01: Plug and Play ACPI device, IDs PNP0200 (active)
+[    0.218513] pnp 00:02: Plug and Play ACPI device, IDs PNP0f03 (active)
+[    0.219642] pnp: PnP ACPI: found 3 devices
+[    0.219643] ACPI: bus type PNP unregistered
+[    0.256264] Switched to clocksource acpi_pm
+[    0.256275] pci_bus 0000:00: resource 4 [io  0x0000-0xffff]
+[    0.256277] pci_bus 0000:00: resource 5 [mem 0x00000000-0xffffffff]
+[    0.256306] NET: Registered protocol family 2
+[    0.256435] TCP established hash table entries: 8192 (order: 4, 65536 bytes)
+[    0.256444] TCP bind hash table entries: 8192 (order: 4, 65536 bytes)
+[    0.256453] TCP: Hash tables configured (established 8192 bind 8192)
+[    0.256464] TCP: reno registered
+[    0.256466] UDP hash table entries: 512 (order: 2, 16384 bytes)
+[    0.256468] UDP-Lite hash table entries: 512 (order: 2, 16384 bytes)
+[    0.256497] NET: Registered protocol family 1
+[    0.256568] RPC: Registered named UNIX socket transport module.
+[    0.256569] RPC: Registered udp transport module.
+[    0.256570] RPC: Registered tcp transport module.
+[    0.256571] RPC: Registered tcp NFSv4.1 backchannel transport module.
+[    0.256575] pci 0000:00:00.0: Limiting direct PCI/PCI transfers
+[    0.256645] pci 0000:00:01.0: Activating ISA DMA hang workarounds
+[    0.256735] pci 0000:00:02.0: Boot video device
+[    0.257752] ACPI: PCI Interrupt Link [LNKB] enabled at IRQ 11
+[    0.257754] PCI: setting IRQ 11 as level-triggered
+[    0.258756] PCI: CLS 0 bytes, default 64
+[    0.258793] Unpacking initramfs...
+[    0.390104] Freeing initrd memory: 8032K (f6868000 - f7040000)
+[    0.391086] platform rtc_cmos: registered platform RTC device (no PNP device found)
+[    0.391456] microcode: CPU0 sig=0x406e3, pf=0x2, revision=0x0
+[    0.391485] microcode: Microcode Update Driver: v2.00 <tigran@aivazian.fsnet.co.uk>, Peter Oruba
+[    0.391486] Scanning for low memory corruption every 60 seconds
+[    0.391741] audit: initializing netlink socket (disabled)
+[    0.391749] type=2000 audit(1510125317.293:1): initialized
+[    0.412070] bounce pool size: 64 pages
+[    0.412074] HugeTLB registered 4 MB page size, pre-allocated 0 pages
+[    0.414151] VFS: Disk quotas dquot_6.5.2
+[    0.414309] Dquot-cache hash table entries: 1024 (order 0, 4096 bytes)
+[    0.414836] NFS: Registering the id_resolver key type
+[    0.414842] Key type id_resolver registered
+[    0.414843] Key type id_legacy registered
+[    0.414892] msgmni has been set to 1736
+[    0.414947] SELinux:  Registering netfilter hooks
+[    0.415364] Block layer SCSI generic (bsg) driver version 0.4 loaded (major 251)
+[    0.415374] io scheduler noop registered
+[    0.415375] io scheduler deadline registered
+[    0.415454] io scheduler cfq registered (default)
+[    0.415534] pci_hotplug: PCI Hot Plug PCI Core version: 0.5
+[    0.415799] ACPI: AC Adapter [AC] (on-line)
+[    0.416018] input: Power Button as /devices/LNXSYSTM:00/LNXPWRBN:00/input/input0
+[    0.416021] ACPI: Power Button [PWRF]
+[    0.416164] input: Sleep Button as /devices/LNXSYSTM:00/LNXSLPBN:00/input/input1
+[    0.416166] ACPI: Sleep Button [SLPF]
+[    0.416416] ACPI: Video Device [GFX0] (multi-head: yes  rom: no  post: no)
+[    0.416453] input: Video Bus as /devices/LNXSYSTM:00/device:00/PNP0A03:00/LNXVIDEO:00/input/input2
+[    0.417547] ACPI: Battery Slot [BAT0] (battery present)
+[    0.417582] Serial: 8250/16550 driver, 4 ports, IRQ sharing enabled
+[    0.418452] Non-volatile memory driver v1.3
+[    0.418455] Linux agpgart interface v0.103
+[    0.418597] [drm] Initialized drm 1.1.0 20060810
+[    0.419284] loop: module loaded
+[    0.419425] ahci 0000:00:0d.0: version 3.0
+[    0.420549] ACPI: PCI Interrupt Link [LNKA] enabled at IRQ 11
+[    0.420637] ahci 0000:00:0d.0: SSS flag set, parallel bus scan disabled
+[    0.420915] ahci 0000:00:0d.0: AHCI 0001.0100 32 slots 1 ports 3 Gbps 0x1 impl SATA mode
+[    0.420917] ahci 0000:00:0d.0: flags: 64bit ncq stag only ccc 
+[    0.421279] scsi0 : ahci
+[    0.421341] ata1: SATA max UDMA/133 abar m8192@0xf0806000 port 0xf0806100 irq 11
+[    0.421467] ata_piix 0000:00:01.1: version 2.13
+[    0.421976] scsi1 : ata_piix
+[    0.422031] scsi2 : ata_piix
+[    0.422071] ata2: PATA max UDMA/33 cmd 0x1f0 ctl 0x3f6 bmdma 0xd000 irq 14
+[    0.422072] ata3: PATA max UDMA/33 cmd 0x170 ctl 0x376 bmdma 0xd008 irq 15
+[    0.424359] e100: Intel(R) PRO/100 Network Driver, 3.5.24-k2-NAPI
+[    0.424361] e100: Copyright(c) 1999-2006 Intel Corporation
+[    0.424383] e1000: Intel(R) PRO/1000 Network Driver - version 7.3.21-k8-NAPI
+[    0.424384] e1000: Copyright (c) 1999-2006 Intel Corporation.
+[    0.425220] ACPI: PCI Interrupt Link [LNKC] enabled at IRQ 10
+[    0.425221] PCI: setting IRQ 10 as level-triggered
+[    0.889772] ata3.00: ATAPI: VBOX CD-ROM, 1.0, max UDMA/133
+[    0.890654] ata3.00: configured for UDMA/33
+[    0.925025] e1000 0000:00:03.0 eth0: (PCI:33MHz:32-bit) 08:00:27:2a:d8:dc
+[    0.925030] e1000 0000:00:03.0 eth0: Intel(R) PRO/1000 Network Connection
+[    0.925063] sky2: driver version 1.30
+[    0.925226] ehci_hcd: USB 2.0 'Enhanced' Host Controller (EHCI) Driver
+[    0.925227] ehci_hcd: block sizes: qh 64 qtd 96 itd 160 sitd 96
+[    0.925229] ehci-pci: EHCI PCI platform driver
+[    0.925252] ohci_hcd: USB 1.1 'Open' Host Controller (OHCI) Driver
+[    0.925253] ohci_hcd: block sizes: ed 64 td 64
+[    0.925255] ohci-pci: OHCI PCI platform driver
+[    0.925961] ohci-pci 0000:00:06.0: OHCI PCI host controller
+[    0.926010] ohci-pci 0000:00:06.0: new USB bus registered, assigned bus number 1
+[    0.926055] ohci-pci 0000:00:06.0: created debug files
+[    0.926060] ohci-pci 0000:00:06.0: irq 11, io mem 0xf0804000
+[    0.977552] ohci-pci 0000:00:06.0: OHCI controller state
+[    0.977564] ohci-pci 0000:00:06.0: OHCI 1.0, NO legacy support registers, rh state running
+[    0.977572] ohci-pci 0000:00:06.0: control 0x283 RWC HCFS=operational CBSR=3
+[    0.977579] ohci-pci 0000:00:06.0: cmdstatus 0x00000 SOC=0
+[    0.977587] ohci-pci 0000:00:06.0: intrstatus 0x00000000
+[    0.977594] ohci-pci 0000:00:06.0: intrenable 0x8000005a MIE RHSC UE RD WDH
+[    0.977628] ohci-pci 0000:00:06.0: hcca frame #0001
+[    0.977635] ohci-pci 0000:00:06.0: roothub.a 0000020c POTPGT=0 NPS NDP=12(12)
+[    0.977642] ohci-pci 0000:00:06.0: roothub.b 00000000 PPCM=0000 DR=0000
+[    0.977649] ohci-pci 0000:00:06.0: roothub.status 00008000 DRWE
+[    0.977657] ohci-pci 0000:00:06.0: roothub.portstatus [0] 0x00010101 CSC PPS CCS
+[    0.977664] ohci-pci 0000:00:06.0: roothub.portstatus [1] 0x00000100 PPS
+[    0.977671] ohci-pci 0000:00:06.0: roothub.portstatus [2] 0x00000100 PPS
+[    0.977678] ohci-pci 0000:00:06.0: roothub.portstatus [3] 0x00000100 PPS
+[    0.977685] ohci-pci 0000:00:06.0: roothub.portstatus [4] 0x00000100 PPS
+[    0.977692] ohci-pci 0000:00:06.0: roothub.portstatus [5] 0x00000100 PPS
+[    0.977698] ohci-pci 0000:00:06.0: roothub.portstatus [6] 0x00000100 PPS
+[    0.977705] ohci-pci 0000:00:06.0: roothub.portstatus [7] 0x00000100 PPS
+[    0.977712] ohci-pci 0000:00:06.0: roothub.portstatus [8] 0x00000100 PPS
+[    0.977719] ohci-pci 0000:00:06.0: roothub.portstatus [9] 0x00000100 PPS
+[    0.977726] ohci-pci 0000:00:06.0: roothub.portstatus [10] 0x00000100 PPS
+[    0.977733] ohci-pci 0000:00:06.0: roothub.portstatus [11] 0x00000100 PPS
+[    0.977758] usb usb1: default language 0x0409
+[    0.977765] usb usb1: udev 1, busnum 1, minor = 0
+[    0.977766] usb usb1: New USB device found, idVendor=1d6b, idProduct=0001
+[    0.977768] usb usb1: New USB device strings: Mfr=3, Product=2, SerialNumber=1
+[    0.977769] usb usb1: Product: OHCI PCI host controller
+[    0.977770] usb usb1: Manufacturer: Linux 3.12.9-ru14618-cs421project1 ohci_hcd
+[    0.977771] usb usb1: SerialNumber: 0000:00:06.0
+[    0.977977] usb usb1: usb_probe_device
+[    0.977979] usb usb1: configuration #1 chosen from 1 choice
+[    0.977986] usb usb1: adding 1-0:1.0 (config #1, interface 0)
+[    0.978026] hub 1-0:1.0: usb_probe_interface
+[    0.978028] hub 1-0:1.0: usb_probe_interface - got id
+[    0.978029] hub 1-0:1.0: USB hub found
+[    0.978057] hub 1-0:1.0: 12 ports detected
+[    0.978059] hub 1-0:1.0: standalone hub
+[    0.978060] hub 1-0:1.0: no power switching (usb 1.0)
+[    0.978061] hub 1-0:1.0: global over-current protection
+[    0.978062] hub 1-0:1.0: power on to power good time: 0ms
+[    0.978073] hub 1-0:1.0: local power source is good
+[    0.978074] hub 1-0:1.0: no over-current condition exists
+[    0.978098] hub 1-0:1.0: trying to enable port power on non-switchable hub
+[    0.978683] uhci_hcd: USB Universal Host Controller Interface driver
+[    0.978746] usbcore: registered new interface driver usblp
+[    0.978771] usbcore: registered new interface driver usb-storage
+[    0.978896] i8042: PNP: PS/2 Controller [PNP0303:PS2K,PNP0f03:PS2M] at 0x60,0x64 irq 1,12
+[    0.979668] serio: i8042 KBD port at 0x60,0x64 irq 1
+[    0.979673] serio: i8042 AUX port at 0x60,0x64 irq 12
+[    0.979792] mousedev: PS/2 mouse device common for all mice
+[    0.980616] input: AT Translated Set 2 keyboard as /devices/platform/i8042/serio0/input/input3
+[    0.984793] rtc_cmos rtc_cmos: rtc core: registered rtc_cmos as rtc0
+[    0.984912] rtc_cmos rtc_cmos: alarms up to one day, 114 bytes nvram
+[    0.985164] device-mapper: ioctl: 4.26.0-ioctl (2013-08-15) initialised: dm-devel@redhat.com
+[    0.985205] hidraw: raw HID events driver (C) Jiri Kosina
+[    0.985622] usbcore: registered new interface driver usbhid
+[    0.985622] usbhid: USB HID core driver
+[    0.985971] Netfilter messages via NETLINK v0.30.
+[    0.985980] nf_conntrack version 0.5.0 (16063 buckets, 64252 max)
+[    0.986093] ctnetlink v0.93: registering with nfnetlink.
+[    0.986173] ip_tables: (C) 2000-2006 Netfilter Core Team
+[    0.986185] TCP: cubic registered
+[    0.986186] Initializing XFRM netlink socket
+[    0.986961] NET: Registered protocol family 10
+[    0.987090] ip6_tables: (C) 2000-2006 Netfilter Core Team
+[    0.987108] sit: IPv6 over IPv4 tunneling driver
+[    0.987608] NET: Registered protocol family 17
+[    0.987624] Key type dns_resolver registered
+[    0.987918] Using IPI No-Shortcut mode
+[    0.988077] registered taskstats version 1
+[    0.988973]   Magic number: 9:92:268
+[    0.989001] console [netcon0] enabled
+[    0.989002] netconsole: network logging started
+[    0.989029] PM: Hibernation image not present or could not be loaded.
+[    0.989030] ALSA device list:
+[    0.989031]   No soundcards found.
+[    0.991135] ata1: SATA link up 3.0 Gbps (SStatus 123 SControl 300)
+[    0.991470] ata1.00: ATA-6: VBOX HARDDISK, 1.0, max UDMA/133
+[    0.991474] ata1.00: 50331648 sectors, multi 128: LBA48 NCQ (depth 31/32)
+[    0.991970] ata1.00: configured for UDMA/133
+[    0.992086] scsi 0:0:0:0: Direct-Access     ATA      VBOX HARDDISK    1.0  PQ: 0 ANSI: 5
+[    0.992255] sd 0:0:0:0: [sda] 50331648 512-byte logical blocks: (25.7 GB/24.0 GiB)
+[    0.992324] sd 0:0:0:0: [sda] Write Protect is off
+[    0.992325] sd 0:0:0:0: [sda] Mode Sense: 00 3a 00 00
+[    0.992353] sd 0:0:0:0: [sda] Write cache: enabled, read cache: enabled, doesn't support DPO or FUA
+[    0.992648] sd 0:0:0:0: Attached scsi generic sg0 type 0
+[    0.993159]  sda: sda1 sda2
+[    0.993431] scsi 2:0:0:0: CD-ROM            VBOX     CD-ROM           1.0  PQ: 0 ANSI: 5
+[    0.994739] sr0: scsi3-mmc drive: 32x/32x xa/form2 tray
+[    0.994741] cdrom: Uniform CD-ROM driver Revision: 3.20
+[    0.994946] sd 0:0:0:0: [sda] Attached SCSI disk
+[    0.995012] sr 2:0:0:0: Attached scsi CD-ROM sr0
+[    0.995294] sr 2:0:0:0: Attached scsi generic sg1 type 5
+[    0.995632] Freeing unused kernel memory: 612K (c1954000 - c19ed000)
+[    0.995701] Write protecting the kernel text: 6996k
+[    0.995729] Write protecting the kernel read-only data: 2100k
+[    1.014079] systemd-cgroups (838) used greatest stack depth: 6520 bytes left
+[    1.078476] ohci-pci 0000:00:06.0: GetStatus roothub.portstatus [0] = 0x00010101 CSC PPS CCS
+[    1.078696] hub 1-0:1.0: port 1: status 0101 change 0001
+[    1.178772] hub 1-0:1.0: state 7 ports 12 chg 0002 evt 0000
+[    1.178802] hub 1-0:1.0: port 1, status 0101, change 0000, 12 Mb/s
+[    1.185381] psmouse serio1: alps: Unknown ALPS touchpad: E7=10 00 64, EC=10 00 64
+[    1.189547] input: ImExPS/2 Generic Explorer Mouse as /devices/platform/i8042/serio1/input/input5
+[    1.201308] ata_id (1163) used greatest stack depth: 6072 bytes left
+[    1.296720] ohci-pci 0000:00:06.0: GetStatus roothub.portstatus [0] = 0x00100103 PRSC PPS PES CCS
+[    1.347802] usb 1-1: new full-speed USB device number 2 using ohci-pci
+[    1.467627] ohci-pci 0000:00:06.0: GetStatus roothub.portstatus [0] = 0x00100103 PRSC PPS PES CCS
+[    1.537049] usb 1-1: ep0 maxpacket = 8
+[    1.551217] usb 1-1: skipped 1 descriptor after interface
+[    1.556068] usb 1-1: default language 0x0409
+[    1.567724] usb 1-1: udev 2, busnum 1, minor = 1
+[    1.567728] usb 1-1: New USB device found, idVendor=80ee, idProduct=0021
+[    1.567730] usb 1-1: New USB device strings: Mfr=1, Product=3, SerialNumber=0
+[    1.567731] usb 1-1: Product: USB Tablet
+[    1.567733] usb 1-1: Manufacturer: VirtualBox
+[    1.567920] usb 1-1: usb_probe_device
+[    1.567923] usb 1-1: configuration #1 chosen from 1 choice
+[    1.571531] usb 1-1: adding 1-1:1.0 (config #1, interface 0)
+[    1.571833] usbhid 1-1:1.0: usb_probe_interface
+[    1.571836] usbhid 1-1:1.0: usb_probe_interface - got id
+[    1.592891] input: VirtualBox USB Tablet as /devices/pci0000:00/0000:00:06.0/usb1/1-1/1-1:1.0/input/input6
+[    1.593188] hid-generic 0003:80EE:0021.0001: input,hidraw0: USB HID v1.10 Mouse [VirtualBox USB Tablet] on usb-0000:00:06.0-1/input0
+[    1.593210] hub 1-0:1.0: state 7 ports 12 chg 0000 evt 0002
+[    1.646343] hrtimer: interrupt took 3835124 ns
+[    1.720628] bio: create slab <bio-1> at 1
+[    1.837244] EXT4-fs (dm-1): mounted filesystem with ordered data mode. Opts: (null)
+[    1.976634] type=1404 audit(1510125318.878:2): enforcing=1 old_enforcing=0 auid=4294967295 ses=4294967295
+[    2.009104] SELinux: 2048 avtab hash slots, 98421 rules.
+[    2.021889] SELinux: 2048 avtab hash slots, 98421 rules.
+[    2.231492] SELinux:  9 users, 15 roles, 4417 types, 250 bools, 1 sens, 1024 cats
+[    2.231495] SELinux:  83 classes, 98421 rules
+[    2.235043] SELinux:  Permission attach_queue in class tun_socket not defined in policy.
+[    2.235379] SELinux: the above unknown classes and permissions will be allowed
+[    2.235458] SELinux:  Completing initialization.
+[    2.235506] SELinux:  Setting up existing superblocks.
+[    2.235555] SELinux: initialized (dev sysfs, type sysfs), uses genfs_contexts
+[    2.235598] SELinux: initialized (dev rootfs, type rootfs), uses genfs_contexts
+[    2.235641] SELinux: initialized (dev bdev, type bdev), uses genfs_contexts
+[    2.235677] SELinux: initialized (dev proc, type proc), uses genfs_contexts
+[    2.235713] SELinux: initialized (dev tmpfs, type tmpfs), uses transition SIDs
+[    2.235751] SELinux: initialized (dev devtmpfs, type devtmpfs), uses transition SIDs
+[    2.236041] SELinux: initialized (dev sockfs, type sockfs), uses task SIDs
+[    2.236103] SELinux: initialized (dev debugfs, type debugfs), uses genfs_contexts
+[    2.236312] SELinux: initialized (dev pipefs, type pipefs), uses task SIDs
+[    2.236315] SELinux: initialized (dev anon_inodefs, type anon_inodefs), uses genfs_contexts
+[    2.236316] SELinux: initialized (dev aio, type aio), not configured for labeling
+[    2.236318] SELinux: initialized (dev devpts, type devpts), uses transition SIDs
+[    2.236327] SELinux: initialized (dev hugetlbfs, type hugetlbfs), uses transition SIDs
+[    2.236333] SELinux: initialized (dev mqueue, type mqueue), uses transition SIDs
+[    2.236337] SELinux: initialized (dev selinuxfs, type selinuxfs), uses genfs_contexts
+[    2.236360] SELinux: initialized (dev sysfs, type sysfs), uses genfs_contexts
+[    2.236511] SELinux: initialized (dev tmpfs, type tmpfs), uses transition SIDs
+[    2.236516] SELinux: initialized (dev tmpfs, type tmpfs), uses transition SIDs
+[    2.236560] SELinux: initialized (dev tmpfs, type tmpfs), uses transition SIDs
+[    2.236572] SELinux: initialized (dev cgroup, type cgroup), uses genfs_contexts
+[    2.236574] SELinux: initialized (dev cgroup, type cgroup), uses genfs_contexts
+[    2.236577] SELinux: initialized (dev cgroup, type cgroup), uses genfs_contexts
+[    2.236585] SELinux: initialized (dev cgroup, type cgroup), uses genfs_contexts
+[    2.236591] SELinux: initialized (dev dm-1, type ext4), uses xattr
+[    2.237642] type=1403 audit(1510125319.139:3): policy loaded auid=4294967295 ses=4294967295
+[    2.393074] tsc: Refined TSC clocksource calibration: 2495.998 MHz
+[    2.396281] anaconda-genera (1465) used greatest stack depth: 5836 bytes left
+[    2.540228] SELinux: initialized (dev autofs, type autofs), uses genfs_contexts
+[    2.554504] SELinux: initialized (dev hugetlbfs, type hugetlbfs), uses transition SIDs
+[    2.639642] SELinux: initialized (dev tmpfs, type tmpfs), uses transition SIDs
+[    2.750692] EXT4-fs (dm-1): re-mounted. Opts: (null)
+[    3.192709] EXT4-fs (sda1): mounted filesystem with ordered data mode. Opts: (null)
+[    3.244666] Adding 2064380k swap on /dev/mapper/fedora-swap.  Priority:-1 extents:1 across:2064380k 
+[    3.250771] SELinux: initialized (dev sda1, type ext4), uses xattr
+[    3.394956] Switched to clocksource tsc
+[    3.664075] type=1305 audit(1510125320.566:4): audit_pid=2019 old=0 auid=4294967295 ses=4294967295
+ subj=system_u:system_r:auditd_t:s0 res=1
+[    5.251541] e1000: eth0 NIC Link is Up 1000 Mbps Full Duplex, Flow Control: RX
+[    5.259149] IPv6: ADDRCONF(NETDEV_UP): eth0: link is not ready
+[    5.259160] IPv6: ADDRCONF(NETDEV_CHANGE): eth0: link becomes ready
+[   92.722586] SYS_ENQUEUE421() called
+[   92.722589] ERROR: 'len' is negative
+[   92.722719] SYS_ENQUEUE421() called
+[   92.722720] ERROR: Length of message too long
+[   92.722799] SYS_ENQUEUE421() called
+[   92.722801] ERROR: Can't access user-space
+[   92.723483] SYS_DEQUEUE421() called
+[   92.723484] ERROR: 'len' is negative
+[   92.723567] SYS_ENQUEUE421() called
+[   92.723621] SYS_DEQUEUE421() called
+[   92.723622] ERROR: Not enough space to store message
+[   92.723699] SYS_DEQUEUE421() called
+[   92.723751] SYS_DEQUEUE421() called
+[   92.723751] ERROR: Queue is empty
+[   92.723972] SYS_QUEUELEN421() called
+[   92.724022] SYS_PEEKLEN421() called
+[   92.724023] ERROR: Queue is empty
+[  178.569575] SYS_ENQUEUE421() called
+[  178.569579] ERROR: 'len' is negative
+[  178.569749] SYS_ENQUEUE421() called
+[  178.569750] ERROR: Length of message too long
+[  178.570005] SYS_ENQUEUE421() called
+[  178.570011] ERROR: Can't access user-space
+[  178.570173] SYS_DEQUEUE421() called
+[  178.570175] ERROR: 'len' is negative
+[  178.570263] SYS_DEQUEUE421() called
+[  178.570264] ERROR: Queue is empty
+[  178.570345] SYS_DEQUEUE421() called
+[  178.570345] ERROR: Queue is empty
+[  178.570481] SYS_DEQUEUE421() called
+[  178.570483] ERROR: Queue is empty
+[  178.570618] SYS_QUEUELEN421() called
+[  178.570677] SYS_PEEKLEN421() called
+[  178.570678] ERROR: Queue is empty
+[  298.672760] SYS_ENQUEUE421() called
+[  298.672763] ERROR: 'len' is negative
+[  298.673688] SYS_ENQUEUE421() called
+[  298.673690] ERROR: Length of message too long
+[  298.673788] SYS_ENQUEUE421() called
+[  298.673791] ERROR: Can't access user-space
+[  298.674305] SYS_DEQUEUE421() called
+[  298.674306] ERROR: 'len' is negative
+[  298.674392] SYS_ENQUEUE421() called
+[  298.674447] SYS_DEQUEUE421() called
+[  298.674448] ERROR: Not enough space to store message
+[  298.674528] SYS_DEQUEUE421() called
+[  298.674579] SYS_DEQUEUE421() called
+[  298.674580] ERROR: Queue is empty
+[  298.674706] SYS_QUEUELEN421() called
+[  298.674845] SYS_PEEKLEN421() called
+[  298.674846] ERROR: Queue is empty
+[  838.062416] SYS_ENQUEUE421() called
+[  838.062418] ERROR: 'len' is negative
+[  838.062552] SYS_ENQUEUE421() called
+[  838.062554] ERROR: Length of message too long
+[  838.062633] SYS_ENQUEUE421() called
+[  838.062635] ERROR: Can't access user-space
+[  838.062763] SYS_DEQUEUE421() called
+[  838.062764] ERROR: 'len' is negative
+[  838.062843] SYS_ENQUEUE421() called
+[  838.062896] SYS_DEQUEUE421() called
+[  838.062897] ERROR: Not enough space to store message
+[  838.063013] SYS_DEQUEUE421() called
+[  838.063065] SYS_DEQUEUE421() called
+[  838.063065] ERROR: Queue is empty
+[  838.063189] SYS_QUEUELEN421() called
+[  838.063239] SYS_PEEKLEN421() called
+[  838.063240] ERROR: Queue is empty
+[ 3346.032794] updatedb (8239) used greatest stack depth: 5696 bytes left
+[ 4853.792938] SYS_ENQUEUE421() called
+[ 4853.793001] SYS_QUEUELEN421() called
+[ 4853.793059] SYS_PEEKLEN421() called
+[ 4853.793121] SYS_DEQUEUE421() called
+[ 4853.793218] SYS_QUEUELEN421() called
+[ 4853.793581] SYS_CLEARQUEUE421() called
+[ 4853.793675] SYS_PEEKLEN421() called
+[ 4853.793676] ERROR: Queue is empty
+[ 4853.793919] SYS_ENQUEUE421() called
+[ 4853.793982] SYS_ENQUEUE421() called
+[ 4853.794042] SYS_ENQUEUE421() called
+[ 4853.794101] SYS_ENQUEUE421() called
+[ 4853.794160] SYS_ENQUEUE421() called
+[ 4853.794238] SYS_ENQUEUE421() called
+[ 4853.794315] SYS_ENQUEUE421() called
+[ 4853.794413] SYS_ENQUEUE421() called
+[ 4853.794471] SYS_QUEUELEN421() called
+[ 4853.794530] SYS_PEEKLEN421() called
+[ 4853.794589] SYS_DEQUEUE421() called
+[ 4853.795615] SYS_QUEUELEN421() called
+[ 4853.795675] SYS_PEEKLEN421() called
+[ 4853.795734] SYS_DEQUEUE421() called
+[ 4853.795830] SYS_QUEUELEN421() called
+[ 4853.795888] SYS_PEEKLEN421() called
+[ 4853.795946] SYS_DEQUEUE421() called
+[ 4853.796041] SYS_QUEUELEN421() called
+[ 4853.796099] SYS_PEEKLEN421() called
+[ 4853.796158] SYS_DEQUEUE421() called
+[ 4853.796371] SYS_QUEUELEN421() called
+[ 4853.796432] SYS_PEEKLEN421() called
+[ 4853.796492] SYS_DEQUEUE421() called
+[ 4853.796587] SYS_QUEUELEN421() called
+[ 4853.796646] SYS_PEEKLEN421() called
+[ 4853.796704] SYS_DEQUEUE421() called
+[ 4853.796842] SYS_QUEUELEN421() called
+[ 4853.796987] SYS_PEEKLEN421() called
+[ 4853.797046] SYS_DEQUEUE421() called
+[ 4853.797141] SYS_QUEUELEN421() called
+[ 4853.797198] SYS_PEEKLEN421() called
+[ 4853.797257] SYS_DEQUEUE421() called
+[ 4853.797351] SYS_QUEUELEN421() called
+[ 4853.797408] SYS_PEEKLEN421() called
+[ 4853.797409] ERROR: Queue is empty
+[ 4853.798183] SYS_ENQUEUE421() called
+[ 4853.798243] SYS_ENQUEUE421() called
+[ 4853.798302] SYS_ENQUEUE421() called
+[ 4853.798361] SYS_ENQUEUE421() called
+[ 4853.798419] SYS_ENQUEUE421() called
+[ 4853.798476] SYS_QUEUELEN421() called
+[ 4853.798534] SYS_DEQUEUE421() called
+[ 4853.798592] SYS_CLEARQUEUE421() called
+[ 4853.798650] SYS_QUEUELEN421() called
+[ 4853.798708] SYS_DEQUEUE421() called
+[ 4853.798709] ERROR: Queue is empty
+[ 4853.798936] SYS_ENQUEUE421() called
+[ 4853.798995] SYS_ENQUEUE421() called
+[ 4853.799068] SYS_ENQUEUE421() called
+[ 4853.799127] SYS_QUEUELEN421() called
+[ 4853.799184] SYS_PEEKLEN421() called
+[ 4853.799242] SYS_DEQUEUE421() called
+[ 4853.799300] SYS_DEQUEUE421() called
+[ 4853.799627] SYS_QUEUELEN421() called
+[ 4853.799705] SYS_PEEKLEN421() called
+[ 4853.799764] SYS_ENQUEUE421() called
+[ 4853.799823] SYS_ENQUEUE421() called
+[ 4853.799881] SYS_QUEUELEN421() called
+[ 4853.801051] SYS_CLEARQUEUE421() called
+[ 4853.801070] SYS_QUEUELEN421() called
+]0;stephanie@linux421-ru14618:/usr/src/project1/driver[stephanie@linux421-ru14618 driver]$ clear
+[3;J[H[2J]0;stephanie@linux421-ru14618:/usr/src/project1/driver[stephanie@linux421-ru14618 driver]$ ./test 1
+BEGIN TEST FILE
+Invalid argument given. Should be either 0 (valid) or -1 (invalid).
+]0;stephanie@linux421-ru14618:/usr/src/project1/driver[stephanie@linux421-ru14618 driver]$ ./test 01[K[K-1
+BEGIN TEST FILE
+---------- INVALID INPUT TEST ----------
+
+sys_enqueue421(): testing correct handling of errors
+  enqueue421(data=0x804959d ("len < 0 error"), len=-1): returned -1; ERR:: Invalid argument
+  enqueue421(data=0x80495ab ("len > 512 error"), len=791): returned -1; ERR:: Argument list too long
+  enqueue421(data=(nil) ("(null)"), len=512): returned -1; ERR:: Bad address
+
+sys_dequeue421(): testing correct handling of errors
+  dequeue421(data=0xbfc5af63, len=-1): returned -1; ERR:: Invalid argument
+  enqueue421(data=0x80495f2 ("valid placeholder"), len=17): returned 0
+  dequeue421(data=0xbfc5af63, len=5): returned -1; ERR:: Argument list too long
+  dequeue should succeed:  dequeue421(data=0xbfc5af63, len=512): returned 0
+  queuelen should be 0-->dequeue should fail:  dequeue421(data=0xbfc5af63, len=512): returned -1; ERR:: No data available
+
+sys_peekLen421(): testing correct handling of errors
+  queuelen should be 0:  queueLen421(): returned 0
+  peeklen should fail:  peekLen421(): returned -1; ERR:: No data available
+
+-------- END INVALID INPUT TEST --------
+
+END TEST FILE
+]0;stephanie@linux421-ru14618:/usr/src/project1/driver[stephanie@linux421-ru14618 driver]$ exit
+exit
+
+Script done on Wed 08 Nov 2017 03:37:06 AM EST
